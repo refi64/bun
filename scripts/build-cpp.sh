@@ -12,4 +12,4 @@ cmake -S . \
   -DNO_CONFIGURE_DEPENDS=1
 
 chmod +x compile-cpp-only.sh
-./compile-cpp-only.sh -v
+bash compile-cpp-only.sh -v
