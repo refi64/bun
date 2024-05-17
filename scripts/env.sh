@@ -7,6 +7,9 @@ if [[ "${CI:-}" == "1" || "${CI:-}" == "true" ]]; then
     export PATH="$BUN_INSTALL/bin:$PATH"
     export PATH="$(brew --prefix llvm@16)/bin:$PATH"
   fi
+  if [[ $(uname -s) == 'Linux' ]]; then
+    source ~/.bashrc || true
+  fi
 fi
 
 # this is the environment script for building bun's dependencies
