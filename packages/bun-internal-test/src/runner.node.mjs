@@ -67,7 +67,9 @@ async function runTests() {
       title = `✅ ${ansiColor("green")}${testPath}${ansiColor("reset")}`;
     }
     reportSection(title);
-    reportStdout(stdout);
+    if (!isBuildKite || error) {
+      reportStdout(stdout);
+    }
     reportSectionEnd();
     if (isBuildKite) {
       writeFileSync(join("logs", `${testPath}.log`), stdout);
