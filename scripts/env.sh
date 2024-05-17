@@ -8,7 +8,7 @@ if [[ "${CI:-}" == "1" || "${CI:-}" == "true" ]]; then
     export PATH="$(brew --prefix llvm@16)/bin:$PATH"
   fi
   if [[ $(uname -s) == 'Linux' ]]; then
-    source ~/.bashrc
+    source ~/.bashrc || true
   fi
 fi
 
