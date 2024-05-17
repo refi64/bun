@@ -1,5 +1,14 @@
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync, openSync, closeSync, mkdtempSync, existsSync, statSync, writeFileSync } from "node:fs";
+import {
+  readFileSync,
+  openSync,
+  closeSync,
+  mkdtempSync,
+  existsSync,
+  statSync,
+  writeFileSync,
+  mkdirSync,
+} from "node:fs";
 import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, basename, dirname } from "node:path";
@@ -72,7 +81,13 @@ async function runTests() {
     }
     reportSectionEnd();
     if (isBuildKite) {
-      writeFileSync(join("logs", `${testPath}.log`), stdout);
+      const logPath = join("logs", `${testPath}.log`);
+      try {
+        mkdirSync(dirname(logPath), { recursive: true });
+        writeFileSync(logPath, stdout);
+      } catch (error) {
+        reportWarning(error);
+      }
     }
   };
   for (const testPath of changedTests) {
