@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync, openSync, closeSync, mkdtempSync, existsSync, statSync } from "node:fs";
+import { readFileSync, openSync, closeSync, mkdtempSync, existsSync, statSync, writeFileSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, basename, dirname } from "node:path";
@@ -69,6 +69,9 @@ async function runTests() {
     reportSection(title);
     reportStdout(stdout);
     reportSectionEnd();
+    if (isBuildKite) {
+      writeFileSync(join("logs", `${testPath}.log`), stdout);
+    }
   };
   for (const testPath of changedTests) {
     parallelQueue.add(async () => await doTest(testPath), {
