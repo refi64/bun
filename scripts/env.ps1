@@ -20,8 +20,12 @@ if ($env:VSINSTALLDIR -eq $null) {
   }
   $vsDir = (& $vswhere -prerelease -latest -property installationPath)
   if ($vsDir -eq $null) {
-      throw "Visual Studio directory not found."
-  } 
+      $vsDir = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022" -Directory
+      if ($vsDir -eq $null) {
+          throw "Visual Studio directory not found."
+      }
+      $vsDir = $vsDir.FullName;
+  }
   Push-Location $vsDir
   try {
     $launchps = (Join-Path -Path $vsDir -ChildPath "Common7\Tools\Launch-VsDevShell.ps1")
