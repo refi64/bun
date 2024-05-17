@@ -58,9 +58,17 @@ async function runTests() {
       reportError(error);
       return;
     }
-    const { stdout } = result;
-    reportStdout(stdout);
     results[testPath] = result;
+    const { stdout, error } = result;
+    let title;
+    if (error) {
+      title = `❌ ${ansiColor("red")}${testPath} - ${error}${ansiColor("reset")}`;
+    } else {
+      title = `✅ ${ansiColor("green")}${testPath}${ansiColor("reset")}`;
+    }
+    reportSection(title);
+    reportStdout(stdout);
+    reportSectionEnd();
   };
   for (const testPath of changedTests) {
     parallelQueue.add(async () => await doTest(testPath), {
@@ -596,11 +604,7 @@ function reportStdout(stdout) {
     return;
   }
   for (const line of stdout.split(endOfLine)) {
-    if (line.startsWith("::group")) {
-      reportSection(line.substring(9));
-    } else if (line.startsWith("::endgroup")) {
-      reportSectionEnd();
-    } else if (line.startsWith("::")) {
+    if (line.startsWith("::")) {
       continue;
     } else {
       println(line);
@@ -610,7 +614,7 @@ function reportStdout(stdout) {
 
 function reportSection(title) {
   if (isGitHubAction) {
-    println(`::group::${title}`);
+    println(`::group::${stripAnsi(title)}`);
   } else if (isBuildKite) {
     println(`--- ${title}`);
   } else {
