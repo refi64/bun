@@ -109,10 +109,12 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
       timeout: hardTestTimeout,
       env: {
         PATH: process.env.PATH,
+        USER: process.env.USER,
         HOME: tmp,
         [isWindows ? "TEMP" : "TMPDIR"]: tmp,
         GITHUB_ACTIONS: "true", // always true so annotations are parsed
         FORCE_COLOR: "1",
+        BUN_FEATURE_FLAG_INTERNAL_FOR_TESTING: "1",
         BUN_DEBUG_QUIET_LOGS: "1",
         BUN_GARBAGE_COLLECTOR_LEVEL: "1",
         BUN_ENABLE_CRASH_REPORTING: "1",
