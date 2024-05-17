@@ -4,8 +4,11 @@
 if [[ "${CI:-}" == "1" || "${CI:-}" == "true" ]]; then
   if [[ $(uname -s) == 'Darwin' ]]; then
     export BUN_INSTALL="$HOME/.bun"
-    export PATH=$BUN_INSTALL/bin:$PATH
+    export PATH="$BUN_INSTALL/bin:$PATH"
     export PATH="$(brew --prefix llvm@16)/bin:$PATH"
+  fi
+  if [[ $(uname -s) == 'Linux' ]]; then
+    source ~/.bashrc
   fi
 fi
 
