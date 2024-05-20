@@ -1,9 +1,8 @@
-$ErrorActionPreference = 'Stop'  # Setting strict mode, similar to 'set -euo pipefail' in bash
-. (Join-Path $PSScriptRoot "env.ps1")
-
 param (
   [Parameter(Mandatory)][bool]$IsBaseline = $False
 )
+
+$ErrorActionPreference = 'Stop'  # Setting strict mode, similar to 'set -euo pipefail' in bash
 
 $Tag = If ($IsBaseline) { "-Baseline" } Else { "" }
 $Flags = If ($IsBaseline) { "-DUSE_BASELINE_BUILD=1" } Else { "" }
