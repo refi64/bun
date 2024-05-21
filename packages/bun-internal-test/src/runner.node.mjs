@@ -13,6 +13,7 @@ import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, basename, dirname } from "node:path";
 import { inspect } from "node:util";
+import { createUnzip } from "node:zlib";
 import PQueue from "p-queue";
 
 const isLinux = process.platform === "linux";
@@ -36,7 +37,47 @@ async function runTests() {
   println(`OS: ${os}`);
   const arch = getArchText();
   println(`Arch: ${arch}`);
-  const execPath = getExecPath();
+  let execPath;
+  if (isBuildKite) {
+    println("...");
+    println("Downloading bun...");
+    mkdirSync("release", { recursive: true });
+    mkdirSync("logs", { recursive: true });
+    const target = process.argv[2] || `bun-${process.platform}-${arch}`;
+    spawnSync("buildkite-agent", ["artifact", "download", "**", "release", "--step", target], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd: cwd,
+    });
+    const zipPath = join("release", `${target}.zip`);
+    if (isWindows) {
+      spawnSync("powershell", ["-Command", `Expand-Archive -Path ${zipPath} -DestinationPath release`], {
+        stdio: ["ignore", "inherit", "inherit"],
+        cwd: cwd,
+      });
+    } else {
+      spawnSync("unzip", ["-o", zipPath, "-d", "release"], {
+        stdio: ["ignore", "inherit", "inherit"],
+        cwd: cwd,
+      });
+    }
+    execPath = join("release", target, isWindows ? "bun.exe" : "bun");
+    println("Installing dependencies...");
+    spawnSync(execPath, ["install"], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd: cwd,
+    });
+    spawnSync(execPath, ["install", "--cwd", "test"], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd: cwd,
+    });
+    spawnSync(execPath, ["install", "--cwd", "packages/bun-internal-test"], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd: cwd,
+    });
+    println("...");
+  } else {
+    execPath = getExecPath();
+  }
   println(`Bun: ${execPath}`);
   const revision = getRevision(execPath);
   println(`Revision: ${revision}`);
