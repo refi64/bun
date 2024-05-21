@@ -160,6 +160,9 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   let { promise: done, resolve } = Promise.withResolvers();
   const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
   try {
+    const execParentPath = dirname(execPath);
+    const systemPath = process.env.PATH;
+    const path = isWindows ? `${execParentPath};${systemPath}` : `${execParentPath}:${systemPath}`;
     const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
     const subprocess = spawn(execPath, ["test", testPath], {
       cwd,
@@ -167,7 +170,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
       encoding: "utf-8",
       timeout: hardTestTimeout,
       env: {
-        PATH: process.env.PATH,
+        PATH: path,
         USER: process.env.USER,
         HOME: tmp,
         [isWindows ? "TEMP" : "TMPDIR"]: tmp,
