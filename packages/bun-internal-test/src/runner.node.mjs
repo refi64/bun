@@ -157,83 +157,83 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   let startedAt;
   let lastUpdated;
   let stdout = "";
-  let { promise: done, resolve } = Promise.withResolvers();
-  const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
-  try {
-    const execParentPath = dirname(execPath);
-    const systemPath = process.env.PATH;
-    const path = isWindows ? `${execParentPath};${systemPath}` : `${execParentPath}:${systemPath}`;
-    const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
-    const subprocess = spawn(execPath, ["test", testPath], {
-      cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-      encoding: "utf-8",
-      timeout: hardTestTimeout,
-      env: {
-        PATH: path,
-        USER: process.env.USER,
-        HOME: tmp,
-        [isWindows ? "TEMP" : "TMPDIR"]: tmp,
-        GITHUB_ACTIONS: "true", // always true so annotations are parsed
-        FORCE_COLOR: "1",
-        BUN_FEATURE_FLAG_INTERNAL_FOR_TESTING: "1",
-        BUN_DEBUG_QUIET_LOGS: "1",
-        BUN_GARBAGE_COLLECTOR_LEVEL: "1",
-        BUN_ENABLE_CRASH_REPORTING: "1",
-        BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0",
-        BUN_INSTALL_CACHE_DIR: join(tmp, "cache"),
-      },
-    });
-    subprocess.on("spawn", () => {
-      startedAt = Date.now();
-      lastUpdated = startedAt;
-    });
-    subprocess.on("error", error => {
-      lastUpdated = Date.now();
+  await new Promise(resolve => {
+    const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
+    try {
+      const execParentPath = dirname(execPath);
+      const systemPath = process.env.PATH;
+      const path = isWindows ? `${execParentPath};${systemPath}` : `${execParentPath}:${systemPath}`;
+      const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
+      const subprocess = spawn(execPath, ["test", testPath], {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+        encoding: "utf-8",
+        timeout: hardTestTimeout,
+        env: {
+          PATH: path,
+          USER: process.env.USER,
+          HOME: tmp,
+          [isWindows ? "TEMP" : "TMPDIR"]: tmp,
+          GITHUB_ACTIONS: "true", // always true so annotations are parsed
+          FORCE_COLOR: "1",
+          BUN_FEATURE_FLAG_INTERNAL_FOR_TESTING: "1",
+          BUN_DEBUG_QUIET_LOGS: "1",
+          BUN_GARBAGE_COLLECTOR_LEVEL: "1",
+          BUN_ENABLE_CRASH_REPORTING: "1",
+          BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0",
+          BUN_INSTALL_CACHE_DIR: join(tmp, "cache"),
+        },
+      });
+      subprocess.on("spawn", () => {
+        startedAt = Date.now();
+        lastUpdated = startedAt;
+      });
+      subprocess.on("error", error => {
+        lastUpdated = Date.now();
+        spawnError = error;
+        resolve();
+      });
+      subprocess.on("exit", (code, signal) => {
+        lastUpdated = Date.now();
+        exitCode = code;
+        signalCode = signal;
+        resolve();
+      });
+      subprocess.stdout.unref();
+      subprocess.stdout.on("data", chunk => {
+        lastUpdated = Date.now();
+        stdout += chunk;
+      });
+      subprocess.stderr.unref();
+      subprocess.stderr.on("data", chunk => {
+        lastUpdated = Date.now();
+        stdout += chunk;
+      });
+      subprocess.unref();
+      const timeoutId = setInterval(() => {
+        if (exitCode !== undefined || signalCode || spawnError) {
+          clearInterval(timeoutId);
+          return;
+        }
+        const remainingMs = timeout - (Date.now() - lastUpdated);
+        if (remainingMs <= 0) {
+          clearInterval(timeoutId);
+          reportError({
+            message: `Test ${testPath} timed out after ${timeout}ms`,
+          });
+          subprocess.kill();
+          return;
+        }
+        const duration = Date.now() - startedAt;
+        reportWarning({
+          message: `Test ${testPath} is still running after ${duration}ms`,
+        });
+      }, spawnTimeout);
+    } catch (error) {
       spawnError = error;
       resolve();
-    });
-    subprocess.on("exit", (code, signal) => {
-      lastUpdated = Date.now();
-      exitCode = code;
-      signalCode = signal;
-      resolve();
-    });
-    subprocess.stdout.unref();
-    subprocess.stdout.on("data", chunk => {
-      lastUpdated = Date.now();
-      stdout += chunk;
-    });
-    subprocess.stderr.unref();
-    subprocess.stderr.on("data", chunk => {
-      lastUpdated = Date.now();
-      stdout += chunk;
-    });
-    subprocess.unref();
-    const timeoutId = setInterval(() => {
-      if (exitCode !== undefined || signalCode || spawnError) {
-        clearInterval(timeoutId);
-        return;
-      }
-      const remainingMs = timeout - (Date.now() - lastUpdated);
-      if (remainingMs <= 0) {
-        clearInterval(timeoutId);
-        reportError({
-          message: `Test ${testPath} timed out after ${timeout}ms`,
-        });
-        subprocess.kill();
-        return;
-      }
-      const duration = Date.now() - startedAt;
-      reportWarning({
-        message: `Test ${testPath} is still running after ${duration}ms`,
-      });
-    }, spawnTimeout);
-  } catch (error) {
-    spawnError = error;
-    resolve();
-  }
-  await done;
+    }
+  });
   const duration = Date.now() - startedAt;
   const ok = exitCode === 0 && !signalCode && !spawnError;
   const tests = [];
