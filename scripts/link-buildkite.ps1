@@ -8,7 +8,7 @@ cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release `
   -DNO_CONFIGURE_DEPENDS=1 `
   "-DCANARY=${CANARY_REVISION}" `
   -DBUN_LINK_ONLY=1 `
-  "-DBUN_DEPS_OUT_DIR=$(Resolve-Path ../release/bun-deps)" `
+  "-DBUN_DEPS_OUT_DIR=$(Resolve-Path ../release/src/deps)" `
   "-DBUN_CPP_ARCHIVE=$(Resolve-Path ../release/bun-cpp-objects.a)" `
   "-DBUN_ZIG_OBJ=$(Resolve-Path ../release/bun-zig.o)"
 if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed" }
