@@ -720,6 +720,11 @@ async function reportTests(results) {
       reportTestsToMarkdown(summaryPath, results);
     }
   }
+  for (const { error } of Object.values(results)) {
+    if (error) {
+      return 1;
+    }
+  }
   return 0;
 }
 
