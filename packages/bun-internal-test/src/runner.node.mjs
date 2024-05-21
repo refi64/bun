@@ -10,7 +10,7 @@ import {
   mkdirSync,
 } from "node:fs";
 import { readdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, cpus } from "node:os";
 import { join, resolve, basename, dirname } from "node:path";
 import { inspect } from "node:util";
 import { createUnzip } from "node:zlib";
@@ -357,11 +357,11 @@ function getGitRef() {
 }
 
 function getConcurrency() {
-  const { hardwareConcurrency } = navigator;
+  const cpuCount = cpus().length;
   if (isCI) {
-    return Math.max(1, hardwareConcurrency - 1);
+    return Math.max(1, cpuCount - 1);
   }
-  return Math.max(1, Math.floor(hardwareConcurrency / 2));
+  return Math.max(1, Math.floor(cpuCount / 2));
 }
 
 function getTmpdir() {
