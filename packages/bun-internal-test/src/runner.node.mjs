@@ -117,9 +117,7 @@ async function runTests() {
       title = `✅ ${ansiColor("green")}${testPath}${ansiColor("reset")}`;
     }
     reportSection(title);
-    if (!isBuildKite || error) {
-      reportStdout(stdout);
-    }
+    reportStdout(stdout);
     reportSectionEnd();
     if (isBuildKite) {
       const logPath = join("logs", `${testPath}.log`);
