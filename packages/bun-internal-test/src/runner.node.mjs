@@ -46,33 +46,33 @@ async function runTests() {
     const target = process.argv[2] || `bun-${process.platform}-${arch}`;
     spawnSync("buildkite-agent", ["artifact", "download", "**", "release", "--step", target], {
       stdio: ["ignore", "inherit", "inherit"],
-      cwd: cwd,
+      cwd,
     });
     const zipPath = join("release", `${target}.zip`);
     if (isWindows) {
       spawnSync("powershell", ["-Command", `Expand-Archive -Path ${zipPath} -DestinationPath release`], {
         stdio: ["ignore", "inherit", "inherit"],
-        cwd: cwd,
+        cwd,
       });
     } else {
       spawnSync("unzip", ["-o", zipPath, "-d", "release"], {
         stdio: ["ignore", "inherit", "inherit"],
-        cwd: cwd,
+        cwd,
       });
     }
-    execPath = join("release", target, isWindows ? "bun.exe" : "bun");
+    execPath = join(cwd, "release", target, isWindows ? "bun.exe" : "bun");
     println("Installing dependencies...");
     spawnSync(execPath, ["install"], {
       stdio: ["ignore", "inherit", "inherit"],
-      cwd: cwd,
+      cwd,
     });
     spawnSync(execPath, ["install", "--cwd", "test"], {
       stdio: ["ignore", "inherit", "inherit"],
-      cwd: cwd,
+      cwd,
     });
     spawnSync(execPath, ["install", "--cwd", "packages/bun-internal-test"], {
       stdio: ["ignore", "inherit", "inherit"],
-      cwd: cwd,
+      cwd,
     });
     println("...");
   } else {
