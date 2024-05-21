@@ -76,7 +76,7 @@ async function runTests() {
     });
     println("...");
   } else {
-    execPath = getExecPath();
+    execPath = getExecPath(process.argv[2]);
   }
   println(`Bun: ${execPath}`);
   const revision = getRevision(execPath);
@@ -477,8 +477,7 @@ function getMaxFd() {
   return -1;
 }
 
-function getExecPath() {
-  const exe = process.argv.length > 2 ? process.argv[2] : "bun";
+function getExecPath(exe) {
   let execPath;
   let error;
   try {
