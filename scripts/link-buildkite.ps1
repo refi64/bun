@@ -16,6 +16,7 @@ if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed" }
 ninja -v
 if ($LASTEXITCODE -ne 0) { throw "Link failed!" }
 
+Set-Location ..
 $Dist = mkdir -Force "bun-windows-x64"
 cp -r release\bun.exe "$Dist\bun.exe"
 Compress-Archive -Force "$Dist" "${Dist}.zip"
