@@ -6,7 +6,6 @@ import {
   mkdtempSync,
   existsSync,
   statSync,
-  writeFileSync,
   mkdirSync,
   accessSync,
   constants as fs,
@@ -321,6 +320,7 @@ function runInstall(execPath, cwd) {
       stdio: ["ignore", "inherit", "inherit"],
       env: {
         PATH: process.env.PATH,
+        TEMP: getTmpdir(),
         BUN_DEBUG_QUIET_LOGS: "1",
         FORCE_COLOR: "1",
       },
