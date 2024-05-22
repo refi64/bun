@@ -8,13 +8,14 @@ import {
   statSync,
   writeFileSync,
   mkdirSync,
+  accessSync,
+  constants as fs,
 } from "node:fs";
 import { readdirSync } from "node:fs";
-import { tmpdir, cpus } from "node:os";
-import { join, resolve, basename, dirname } from "node:path";
+import { tmpdir, cpus, hostname } from "node:os";
+import { join, resolve, basename, dirname, relative } from "node:path";
 import { inspect } from "node:util";
-import { createUnzip } from "node:zlib";
-import PQueue from "p-queue";
+import readline from "node:readline/promises";
 
 const isLinux = process.platform === "linux";
 const isMacOS = process.platform === "darwin";
@@ -23,66 +24,42 @@ const isGitHubAction = !!process.env["GITHUB_ACTIONS"];
 const isBuildKite = !!process.env["BUILDKITE"];
 const isBuildKiteTestSuite = !!process.env["BUILDKITE_ANALYTICS_TOKEN"];
 const isCI = !!process.env["CI"] || isGitHubAction || isBuildKite;
-const isDebug = !!process.env["DEBUG"] || !!process.env["RUNNER_DEBUG"];
+const isInteractive = !isCI && process.argv.includes("-i") && process.stdout.isTTY;
 
 const cwd = resolve(import.meta.dirname, "../../..");
 const spawnTimeout = 30_000;
 const softTestTimeout = 60_000;
 const hardTestTimeout = 3 * softTestTimeout;
 const endOfLine = isWindows ? "\r\n" : "\n";
-const runId = crypto.randomUUID();
 
-async function runTests() {
-  const os = getOsText();
-  println(`OS: ${os}`);
-  const arch = getArchText();
-  println(`Arch: ${arch}`);
+async function runTests(target) {
+  const timestamp = new Date();
+  println(`Timestamp: ${timestamp}`);
+  println(`OS: ${getOsPrettyText()}`);
+  println(`Arch: ${getArchText()}`);
+  println(`Hostname: ${getHostname()}`);
+  if (isCI) {
+    println(`CI: ${getCI()}`);
+    println(`Build URL: ${getBuildUrl()}`);
+  }
+
   let execPath;
   if (isBuildKite) {
-    println("...");
-    println("Downloading bun...");
-    mkdirSync("release", { recursive: true });
-    mkdirSync("logs", { recursive: true });
-    const target = process.argv[2] || `bun-${process.platform}-${arch}`;
-    spawnSync("buildkite-agent", ["artifact", "download", "**", "release", "--step", target], {
-      stdio: ["ignore", "inherit", "inherit"],
-      cwd,
-    });
-    const zipPath = join("release", `${target}.zip`);
-    if (isWindows) {
-      spawnSync("powershell", ["-Command", `Expand-Archive -Path ${zipPath} -DestinationPath release`], {
-        stdio: ["ignore", "inherit", "inherit"],
-        cwd,
-      });
-    } else {
-      spawnSync("unzip", ["-o", zipPath, "-d", "release"], {
-        stdio: ["ignore", "inherit", "inherit"],
-        cwd,
-      });
-    }
-    execPath = join(cwd, "release", target, isWindows ? "bun.exe" : "bun");
-    println("Installing dependencies...");
-    spawnSync(execPath, ["install"], {
-      stdio: ["ignore", "inherit", "inherit"],
-      cwd,
-    });
-    spawnSync(execPath, ["install", "--cwd", "test"], {
-      stdio: ["ignore", "inherit", "inherit"],
-      cwd,
-    });
-    spawnSync(execPath, ["install", "--cwd", "packages/bun-internal-test"], {
-      stdio: ["ignore", "inherit", "inherit"],
-      cwd,
-    });
-    println("...");
+    execPath = await getExecPathFromBuildKite(target);
   } else {
-    execPath = getExecPath(process.argv[2]);
+    execPath = getExecPath(target);
   }
   println(`Bun: ${execPath}`);
   const revision = getRevision(execPath);
   println(`Revision: ${revision}`);
-  println("...");
+
   const testsPath = join(cwd, "test");
+  println("Installing dependencies...");
+  runInstall(execPath, import.meta.dirname);
+  runInstall(execPath, cwd);
+  runInstall(execPath, testsPath);
+
+  println("Finding tests...");
   const tests = getTests(testsPath);
   const changedFiles = getChangedFiles(testsPath);
   const changedTests = tests.filter(test => changedFiles.has(test));
@@ -93,42 +70,22 @@ async function runTests() {
   const parallelTests = unchangedTests.filter(path => !isSequentialTest(path));
   println(`Found ${parallelTests.length} parallel tests`);
   println(`Found ${tests.length} total tests`);
+
+  println(`Running tests...`);
   const concurrency = getConcurrency();
-  println(`Using ${concurrency} jobs`);
-  println("...");
+  println(`Jobs: ${concurrency}`);
   const tmpPath = getTmpdir();
+  println(`Tmpdir: ${tmpPath}`);
+
+  const { default: PQueue } = await import("p-queue");
   const sequentialQueue = new PQueue({ concurrency: 1 });
-  const parallelQueue = new PQueue({ concurrency });
+  const parallelQueue = concurrency === 1 ? sequentialQueue : new PQueue({ concurrency });
+
   const results = {};
   const doTest = async testPath => {
-    let result;
-    try {
-      result = await runTest({ cwd: testsPath, execPath, testPath, tmpPath });
-    } catch (error) {
-      reportError(error);
-      return;
-    }
-    results[testPath] = result;
-    const { stdout, error } = result;
-    let title;
-    if (error) {
-      title = `❌ ${ansiColor("red")}${testPath} - ${error}${ansiColor("reset")}`;
-    } else {
-      title = `✅ ${ansiColor("green")}${testPath}${ansiColor("reset")}`;
-    }
-    reportSection(title);
-    reportStdout(stdout);
-    reportSectionEnd();
-    if (isBuildKite) {
-      const logPath = join("logs", `${testPath}.log`);
-      try {
-        mkdirSync(dirname(logPath), { recursive: true });
-        writeFileSync(logPath, stdout);
-      } catch (error) {
-        reportWarning(error);
-      }
-    }
+    return runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath });
   };
+
   for (const testPath of changedTests) {
     parallelQueue.add(async () => await doTest(testPath), {
       priority: 1,
@@ -146,8 +103,7 @@ async function runTests() {
     await Promise.all([parallelQueue.onIdle(), sequentialQueue.onIdle()]);
   }
   println("...");
-  const exitCode = await reportTests(results);
-  process.exit(exitCode);
+  return reportTests(results);
 }
 
 async function runTest({ cwd, execPath, testPath, tmpPath }) {
@@ -160,9 +116,6 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   await new Promise(resolve => {
     const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
     try {
-      const execParentPath = dirname(execPath);
-      const systemPath = process.env.PATH;
-      const path = isWindows ? `${execParentPath};${systemPath}` : `${execParentPath}:${systemPath}`;
       const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
       const subprocess = spawn(execPath, ["test", testPath], {
         cwd,
@@ -170,7 +123,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
         encoding: "utf-8",
         timeout: hardTestTimeout,
         env: {
-          PATH: path,
+          PATH: addPath(dirname(execPath), process.env.PATH),
           USER: process.env.USER,
           HOME: tmp,
           [isWindows ? "TEMP" : "TMPDIR"]: tmp,
@@ -315,7 +268,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
     }
     error = `code ${exitCode}`;
   }
-  const result = {
+  return {
     testPath,
     ok,
     status: ok ? "pass" : "fail",
@@ -323,12 +276,64 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
     tests,
     stdout,
   };
+}
+
+async function runAndReportTest(options) {
+  const result = await runTest(options);
+  const { testPath, stdout, status, error } = result;
+
+  const emoji = getTestEmoji(status);
+  const color = getTestColor(status);
+  const reset = ansiColor("reset");
+  if (error) {
+    printGroup(`${emoji} ${color}${testPath} - ${error}${reset}`);
+  } else {
+    printGroup(`${emoji} ${color}${testPath}${reset}`);
+  }
+  printStdout(stdout);
+  printGroupEnd();
+
   if (isBuildKiteTestSuite) {
     await reportTestsToBuildKite({
       [testPath]: result,
     });
   }
-  return result;
+
+  if (error && isInteractive) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const answer = await rl.question("Continue? [y] Retry? [r] Exit? [x/n]");
+    switch (answer.toLowerCase()) {
+      case "r":
+        return runAndReportTest(options);
+      case "x":
+        process.exit(0);
+    }
+  }
+}
+
+function runInstall(execPath, cwd) {
+  try {
+    const { error, status, signal } = spawnSync(execPath, ["install"], {
+      cwd,
+      stdio: ["ignore", "inherit", "inherit"],
+      env: {
+        PATH: process.env.PATH,
+        BUN_DEBUG_QUIET_LOGS: "1",
+        FORCE_COLOR: "1",
+      },
+    });
+    if (error) {
+      throw error;
+    }
+    if (status !== 0 || signal) {
+      throw new Error(`Process exited with code ${signal || status}`);
+    }
+  } catch (cause) {
+    throw new Error(`Could not install dependencies: ${cwd}`, { cause });
+  }
 }
 
 function getGitSha() {
@@ -360,6 +365,9 @@ function getGitRef() {
 }
 
 function getConcurrency() {
+  if (isInteractive) {
+    return 1;
+  }
   const cpuCount = cpus().length;
   if (isCI) {
     return Math.max(1, cpuCount - 1);
@@ -500,12 +508,38 @@ function getExecPath(exe) {
     error = cause;
   }
   if (execPath) {
-    if (existsSync(execPath) && statSync(execPath).isFile()) {
+    if (isExecutable(execPath)) {
       return execPath;
     }
     error = new Error(`File is not an executable: ${execPath}`);
   }
   throw new Error(`Could not find executable: ${exe}`, { cause: error });
+}
+
+async function getExecPathFromBuildKite(target) {
+  const releasePath = join(cwd, "release");
+  mkdirSync(releasePath, { recursive: true });
+  spawnSync("buildkite-agent", ["artifact", "download", "**", releasePath, "--step", target], {
+    stdio: ["ignore", "inherit", "inherit"],
+    cwd,
+  });
+  const zipPath = join(releasePath, `${target}.zip`);
+  if (isWindows) {
+    spawnSync("powershell", ["-Command", `Expand-Archive -Path ${zipPath} -DestinationPath ${releasePath}`], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd,
+    });
+  } else {
+    spawnSync("unzip", ["-o", zipPath, "-d", releasePath], {
+      stdio: ["ignore", "inherit", "inherit"],
+      cwd,
+    });
+  }
+  const execPath = join(releasePath, target, isWindows ? "bun.exe" : "bun");
+  if (!isExecutable(execPath)) {
+    throw new Error(`Could not find executable from BuildKite: ${execPath}`);
+  }
+  return execPath;
 }
 
 function getRevision(execPath) {
@@ -529,6 +563,20 @@ function getRevision(execPath) {
 }
 
 function getOsText() {
+  const { platform } = process;
+  switch (platform) {
+    case "darwin":
+      return "darwin";
+    case "linux":
+      return "linux";
+    case "win32":
+      return "windows";
+    default:
+      return platform;
+  }
+}
+
+function getOsPrettyText() {
   const { platform } = process;
   if (platform === "darwin") {
     const properties = {};
@@ -638,6 +686,52 @@ function getArchEmoji() {
   }
 }
 
+function getBuildUrl() {
+  let url;
+  if (isBuildKite) {
+    const buildUrl = process.env["BUILDKITE_BUILD_URL"];
+    const jobId = process.env["BUILDKITE_JOB_ID"];
+    if (buildUrl && jobId) {
+      url = `${buildUrl}#${jobId}`;
+    }
+  } else if (isGitHubAction) {
+    const baseUrl = process.env["GITHUB_SERVER_URL"];
+    const repository = process.env["GITHUB_REPOSITORY"];
+    const runId = process.env["GITHUB_RUN_ID"];
+    if (baseUrl && repository && runId) {
+      url = `${baseUrl}/${repository}/actions/runs/${runId}`;
+    }
+  }
+  return url || "<none>";
+}
+
+function getCI() {
+  if (isBuildKite) {
+    return "BuildKite";
+  }
+  if (isGitHubAction) {
+    return "GitHub Actions";
+  }
+  if (isCI) {
+    return "CI";
+  }
+  return "<unknown>";
+}
+
+function getHostname() {
+  let name;
+  if (isBuildKite) {
+    name = process.env["BUILDKITE_AGENT_NAME"];
+  } else {
+    try {
+      name = hostname();
+    } catch (error) {
+      reportWarning(error);
+    }
+  }
+  return name || "<unknown>";
+}
+
 function getChangedFiles(cwd) {
   try {
     const { error, stdout } = spawnSync("git", ["diff", "--diff-filter=AM", "--name-only", "main"], {
@@ -661,7 +755,14 @@ function getChangedFiles(cwd) {
   return new Set();
 }
 
-function reportStdout(stdout) {
+function addPath(...paths) {
+  if (isWindows) {
+    return paths.join(";");
+  }
+  return paths.join(":");
+}
+
+function printStdout(stdout) {
   if (isGitHubAction) {
     print(stdout);
     return;
@@ -675,17 +776,17 @@ function reportStdout(stdout) {
   }
 }
 
-function reportSection(title) {
+function printGroup(title) {
   if (isGitHubAction) {
     println(`::group::${stripAnsi(title)}`);
   } else if (isBuildKite) {
     println(`--- ${title}`);
   } else {
-    println(`=> ${title}`);
+    println(title);
   }
 }
 
-function reportSectionEnd() {
+function printGroupEnd() {
   if (isGitHubAction) {
     println("::endgroup::");
   }
@@ -935,4 +1036,23 @@ function getTestColor(status) {
   }
 }
 
-await runTests();
+function isExecutable(path) {
+  if (!existsSync(path) || !statSync(path).isFile()) {
+    return false;
+  }
+  try {
+    accessSync(path, fs.X_OK);
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+const [target] = process.argv.slice(2);
+if (!target) {
+  const filename = relative(cwd, import.meta.filename);
+  throw new Error(`Usage: ${process.argv0} ${filename} <target>`);
+}
+
+const exitCode = await runTests(target);
+process.exit(exitCode);
