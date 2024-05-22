@@ -26,6 +26,7 @@ const isCI = !!process.env["CI"] || isGitHubAction || isBuildKite;
 const isInteractive = !isCI && process.argv.includes("-i") && process.stdout.isTTY;
 
 const cwd = resolve(import.meta.dirname, "../../..");
+const tmp = getTmpdir();
 const spawnTimeout = 30_000;
 const softTestTimeout = 60_000;
 const hardTestTimeout = 3 * softTestTimeout;
@@ -72,17 +73,13 @@ async function runTests(target) {
 
   println(`Running tests...`);
   const concurrency = getConcurrency();
-  println(`Jobs: ${concurrency}`);
-  const tmpPath = getTmpdir();
-  println(`Tmpdir: ${tmpPath}`);
-
   const { default: PQueue } = await import("p-queue");
   const sequentialQueue = new PQueue({ concurrency: 1 });
   const parallelQueue = concurrency === 1 ? sequentialQueue : new PQueue({ concurrency });
 
   const results = {};
   const doTest = async testPath => {
-    return runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath });
+    return runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath: tmp });
   };
 
   for (const testPath of changedTests) {
@@ -315,12 +312,14 @@ async function runAndReportTest(options) {
 
 function runInstall(execPath, cwd) {
   try {
+    const tmpPath = mkdtempSync(join(tmp, "bun-install-"));
     const { error, status, signal } = spawnSync(execPath, ["install"], {
       cwd,
       stdio: ["ignore", "inherit", "inherit"],
       env: {
         PATH: process.env.PATH,
-        TEMP: getTmpdir(),
+        [isWindows ? "TEMP" : "TMPDIR"]: tmpPath,
+        BUN_INSTALL_CACHE_DIR: join(tmpPath, "cache"),
         BUN_DEBUG_QUIET_LOGS: "1",
         FORCE_COLOR: "1",
       },
