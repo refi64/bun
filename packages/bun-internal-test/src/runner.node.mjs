@@ -109,8 +109,8 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   let startedAt;
   let lastUpdated;
   let stdout = "";
+  const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
   await new Promise(resolve => {
-    const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
     try {
       const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
       const subprocess = spawn(execPath, ["test", testPath], {
