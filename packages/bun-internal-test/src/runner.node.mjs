@@ -200,6 +200,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
           //   message: `Test ${testPath} timed out after ${timeout}ms`,
           // });
           subprocess.kill();
+          signalCode = "SIGTERM";
           resolve();
           return;
         }
