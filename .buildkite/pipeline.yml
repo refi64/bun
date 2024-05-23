@@ -5,7 +5,7 @@ steps:
   - key: "pipeline"
     label: ":pipeline:"
     command:
-      - "buildkite-agent pipeline upload"
+      - "buildkite-agent pipeline upload --replace"
   - wait: ~
   - key: "build-darwin-aarch64-ci"
     group: ":darwin: aarch64"
