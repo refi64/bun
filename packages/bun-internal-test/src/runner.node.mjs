@@ -17,7 +17,6 @@ import { tmpdir, cpus, hostname } from "node:os";
 import { join, resolve, basename, dirname, relative } from "node:path";
 import { inspect } from "node:util";
 import readline from "node:readline/promises";
-import { summary } from "@actions/core";
 
 const isLinux = process.platform === "linux";
 const isMacOS = process.platform === "darwin";
