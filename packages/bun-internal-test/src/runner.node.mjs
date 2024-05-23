@@ -9,12 +9,15 @@ import {
   mkdirSync,
   accessSync,
   constants as fs,
+  writeFileSync,
+  appendFileSync,
 } from "node:fs";
 import { readdirSync } from "node:fs";
 import { tmpdir, cpus, hostname } from "node:os";
 import { join, resolve, basename, dirname, relative } from "node:path";
 import { inspect } from "node:util";
 import readline from "node:readline/promises";
+import { summary } from "@actions/core";
 
 const isLinux = process.platform === "linux";
 const isMacOS = process.platform === "darwin";
@@ -54,10 +57,10 @@ async function runTests(target) {
   println(`Revision: ${revision}`);
 
   const testsPath = join(cwd, "test");
-  println("Installing dependencies...");
-  runInstall(execPath, import.meta.dirname);
-  runInstall(execPath, cwd);
-  runInstall(execPath, testsPath);
+  const installPaths = [dirname(import.meta.dirname), cwd, testsPath];
+  for (const path of installPaths) {
+    runInstall(execPath, path);
+  }
 
   println("Finding tests...");
   const tests = getTests(testsPath);
@@ -78,28 +81,52 @@ async function runTests(target) {
   const parallelQueue = concurrency === 1 ? sequentialQueue : new PQueue({ concurrency });
 
   const results = {};
-  const doTest = async testPath => {
-    return runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath: tmp });
+  const createTest = testPath => async () => {
+    const realPath = relative(cwd, join(testsPath, testPath));
+    const result = await runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath: tmp });
+    results[realPath] = result;
+    return result;
   };
 
   for (const testPath of changedTests) {
-    parallelQueue.add(async () => await doTest(testPath), {
+    parallelQueue.add(createTest(testPath), {
       priority: 1,
     });
   }
   for (const testPath of sequentialTests) {
-    sequentialQueue.add(async () => await doTest(testPath));
+    sequentialQueue.add(createTest(testPath));
   }
   for (const testPath of parallelTests) {
-    parallelQueue.add(async () => await doTest(testPath));
+    parallelQueue.add(createTest(testPath));
   }
   {
     parallelQueue.start();
     sequentialQueue.start();
     await Promise.all([parallelQueue.onIdle(), sequentialQueue.onIdle()]);
   }
-  println("...");
-  return reportTests(results);
+
+  const summary = reportTestsToMarkdown(results);
+  if (summary) {
+    if (isGitHubAction) {
+      const summaryPath = process.env["GITHUB_STEP_SUMMARY"];
+      if (summaryPath) {
+        appendFileSync(summaryPath, summary);
+      }
+    } else if (isBuildKite) {
+      spawnSync("buildkite-agent", ["annotate", "--style", "error", summary], {
+        stdio: ["ignore", "inherit", "inherit"],
+        cwd,
+      });
+    }
+  }
+
+  for (const { error } of Object.values(results)) {
+    if (error) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 async function runTest({ cwd, execPath, testPath, tmpPath }) {
@@ -167,16 +194,16 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
         const remainingMs = timeout - (Date.now() - lastUpdated);
         if (remainingMs <= 0) {
           clearInterval(timeoutId);
-          reportError({
-            message: `Test ${testPath} timed out after ${timeout}ms`,
-          });
+          // reportError({
+          //   message: `Test ${testPath} timed out after ${timeout}ms`,
+          // });
           subprocess.kill();
           return;
         }
         const duration = Date.now() - startedAt;
-        reportWarning({
-          message: `Test ${testPath} is still running after ${duration}ms`,
-        });
+        // reportWarning({
+        //   message: `Test ${testPath} is still running after ${duration}ms`,
+        // });
       }, spawnTimeout);
     } catch (error) {
       spawnError = error;
@@ -202,7 +229,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
           .map(entry => entry.split("=")),
       );
       testError ||= {
-        file,
+        file: join("test", file || testPath), // HACK
         line,
         col,
         name: title,
@@ -223,7 +250,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
       const test = string.substring(1 + emoji.length, eol);
       const duration = eol ? string.substring(eol + 2, string.lastIndexOf("]")) : undefined;
       tests.push({
-        file: testPath,
+        file: join("test", testPath), // HACK
         test,
         status: text,
         error: testError,
@@ -308,9 +335,12 @@ async function runAndReportTest(options) {
         process.exit(0);
     }
   }
+
+  return result;
 }
 
 function runInstall(execPath, cwd) {
+  printGroup(`Installing dependencies... ${cwd}`);
   try {
     const tmpPath = mkdtempSync(join(tmp, "bun-install-"));
     const { error, status, signal } = spawnSync(execPath, ["install"], {
@@ -332,12 +362,14 @@ function runInstall(execPath, cwd) {
     }
   } catch (cause) {
     throw new Error(`Could not install dependencies: ${cwd}`, { cause });
+  } finally {
+    printGroupEnd();
   }
 }
 
 function getGitSha() {
-  const sha = process.env["GITHUB_SHA"];
-  if (sha) {
+  const sha = process.env["GITHUB_SHA"] || process.env["BUILDKITE_COMMIT"];
+  if (sha?.length === 40) {
     return sha;
   }
   try {
@@ -701,7 +733,7 @@ function getBuildUrl() {
       url = `${baseUrl}/${repository}/actions/runs/${runId}`;
     }
   }
-  return url || "<none>";
+  return url;
 }
 
 function getCI() {
@@ -764,15 +796,22 @@ function addPath(...paths) {
 function printStdout(stdout) {
   if (isGitHubAction) {
     print(stdout);
-    return;
+  } else {
+    print(sanitizeStdout(stdout));
   }
+}
+
+function sanitizeStdout(stdout) {
+  let sanitized = "";
   for (const line of stdout.split(endOfLine)) {
     if (line.startsWith("::")) {
       continue;
     } else {
-      println(line);
+      sanitized += line;
+      sanitized += endOfLine;
     }
   }
+  return sanitized;
 }
 
 function printGroup(title) {
@@ -812,42 +851,73 @@ function reportError(error, isWarning = false) {
   println(`${ansiColor(errorColor)}${stripAnsi(errorText)}${ansiColor("reset")}`);
 }
 
-async function reportTests(results) {
-  reportTestsToAnsi(results);
-  if (isGitHubAction) {
-    const summaryPath = process.env["GITHUB_STEP_SUMMARY"];
-    if (summaryPath) {
-      reportTestsToMarkdown(summaryPath, results);
-    }
-  }
-  for (const { error } of Object.values(results)) {
-    if (error) {
-      return 1;
-    }
-  }
-  return 0;
-}
+function reportTestsToMarkdown(results) {
+  const baseUrl = process.env["GITHUB_SERVER_URL"] || "https://github.com";
+  const repository = process.env["GITHUB_REPOSITORY"] || "oven-sh/bun";
+  const pullRequest = /^pull\/(\d+)$/.exec(process.env["GITHUB_REF"])?.[1];
+  const gitSha = getGitSha();
 
-function reportTestsToAnsi(results) {
-  for (const [testPath, { status, error, tests }] of Object.entries(results)) {
-    const emoji = getTestEmoji(status);
-    const color = getTestColor(status);
-    const reset = ansiColor("reset");
-    if (error) {
-      println(`${emoji} ${color}${testPath} - ${error}${reset}`);
-    } else {
-      println(`${emoji} ${color}${testPath}${reset}`);
-    }
-  }
-}
-
-function reportTestsToMarkdown(filePath, results) {
   let markdown = "";
-  for (const [testPath, { tests, error }] of Object.entries(results)) {
+  let fileCount = 0;
+  let testCount = 0;
+  let failCount = 0;
+  for (const [testPath, { tests, error, stdout }] of Object.entries(results)) {
+    fileCount++;
+    testCount += tests.length;
+    failCount += error ? 1 : 0;
     if (!error) {
       continue;
     }
+
+    let errorLine;
+    for (const { error } of tests) {
+      if (!error) {
+        continue;
+      }
+      const { line } = error;
+      if (line) {
+        errorLine = line;
+        break;
+      }
+    }
+
+    let testUrl;
+    if (pullRequest) {
+      const testPathMd5 = crypto.createHash("md5").update(testPath).digest("hex");
+      testUrl = `${baseUrl}/${repository}/pull/${pullRequest}/files#diff-${testPathMd5}`;
+      if (errorLine) {
+        testUrl += `L${errorLine}`;
+      }
+    } else {
+      testUrl = `${baseUrl}/${repository}/blob/${gitSha}/${testPath}`;
+      if (errorLine) {
+        testUrl += `#L${errorLine}`;
+      }
+    }
+
+    markdown += `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`;
+    markdown += `<pre><code>${stripAnsi(sanitizeStdout(stdout))}</code></pre>\n\n`;
+    markdown += `</details>\n\n`;
   }
+
+  if (!markdown) {
+    return "";
+  }
+
+  let summary = "## ";
+
+  const title = `${getOsEmoji()} ${getArchEmoji()}`;
+  const buildUrl = getBuildUrl();
+  if (buildUrl) {
+    summary += `[${title}](${buildUrl})`;
+  } else {
+    summary += title;
+  }
+
+  summary += ` - ${failCount} failing\n\n`;
+  summary += markdown;
+
+  return summary;
 }
 
 async function reportTestsToBuildKite(results) {
