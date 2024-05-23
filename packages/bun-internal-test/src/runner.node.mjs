@@ -82,7 +82,7 @@ async function runTests(target) {
   const results = {};
   const createTest = testPath => async () => {
     const realPath = relative(cwd, join(testsPath, testPath));
-    const result = await runAndReportTest({ cwd: testsPath, execPath, testPath, tmpPath: tmp });
+    const result = await runAndReportTest({ cwd, execPath, testPath, tmpPath: tmp });
     results[realPath] = result;
     return result;
   };
@@ -683,11 +683,11 @@ function getOsEmoji() {
   const { platform } = process;
   switch (platform) {
     case "darwin":
-      return "";
+      return isBuildKite ? ":apple:" : "";
     case "win32":
-      return "🪟";
+      return isBuildKite ? ":windows:" : "🪟";
     case "linux":
-      return "🐧";
+      return isBuildKite ? ":linux:" : "🐧";
     default:
       return "🔮";
   }
@@ -713,7 +713,7 @@ function getArchEmoji() {
     case "arm64":
       return "💪";
     default:
-      return "💻";
+      return "🔮";
   }
 }
 
@@ -906,7 +906,7 @@ function reportTestsToMarkdown(results) {
 
   let summary = "## ";
 
-  const title = `${getOsEmoji()} ${getArchEmoji()}`;
+  const title = process.env["BUILDKITE_GROUP_LABEL"] || `${getOsEmoji()} ${getArchEmoji()}`;
   const buildUrl = getBuildUrl();
   if (buildUrl) {
     summary += `[${title}](${buildUrl})`;
