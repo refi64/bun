@@ -2,9 +2,11 @@ agents:
   queue: "ci"
 
 steps:
-  - label: ":pipeline:"
+  - key: "pipeline"
+    label: ":pipeline:"
     command:
       - "buildkite-agent pipeline upload"
+  - wait: ~
   - key: "build-darwin-aarch64-ci"
     group: ":darwin: aarch64"
     steps:
