@@ -130,17 +130,18 @@ async function runTests(target) {
 }
 
 async function runTest({ cwd, execPath, testPath, tmpPath }) {
+  const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
+  const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
   let exitCode;
   let signalCode;
   let spawnError;
   let startedAt;
   let lastUpdated;
+  let subprocess;
   let stdout = "";
-  const timeout = isSequentialTest(testPath) ? softTestTimeout : spawnTimeout;
   await new Promise(resolve => {
     try {
-      const tmp = mkdtempSync(join(tmpPath, "bun-test-"));
-      const subprocess = spawn(execPath, ["test", testPath], {
+      subprocess = spawn(execPath, ["test", testPath], {
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
         encoding: "utf-8",
@@ -214,6 +215,11 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
       resolve();
     }
   });
+  if (subprocess) {
+    subprocess.stdout.destroy();
+    subprocess.stderr.destroy();
+    subprocess.kill(9);
+  }
   const duration = Date.now() - startedAt;
   const ok = exitCode === 0 && !signalCode && !spawnError;
   const tests = [];
