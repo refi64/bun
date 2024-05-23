@@ -114,6 +114,7 @@ async function runTests(target) {
     } else if (isBuildKite) {
       spawnSync("buildkite-agent", ["annotate", "--append", "--style", "error", summary], {
         stdio: ["ignore", "inherit", "inherit"],
+        timeout: spawnTimeout,
         cwd,
       });
     }
@@ -188,15 +189,18 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
       const timeoutId = setInterval(() => {
         if (exitCode !== undefined || signalCode || spawnError) {
           clearInterval(timeoutId);
+          resolve();
           return;
         }
-        const remainingMs = timeout - (Date.now() - lastUpdated);
+        const lastTimestamp = isWindows ? startedAt : lastUpdated;
+        const remainingMs = timeout - (Date.now() - lastTimestamp);
         if (remainingMs <= 0) {
           clearInterval(timeoutId);
           // reportError({
           //   message: `Test ${testPath} timed out after ${timeout}ms`,
           // });
           subprocess.kill();
+          resolve();
           return;
         }
         const duration = Date.now() - startedAt;
@@ -345,6 +349,7 @@ function runInstall(execPath, cwd) {
     const { error, status, signal } = spawnSync(execPath, ["install"], {
       cwd,
       stdio: ["ignore", "inherit", "inherit"],
+      timeout: hardTestTimeout,
       env: {
         PATH: process.env.PATH,
         [isWindows ? "TEMP" : "TMPDIR"]: tmpPath,
@@ -372,7 +377,10 @@ function getGitSha() {
     return sha;
   }
   try {
-    const { stdout } = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
+    const { stdout } = spawnSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf-8",
+      timeout: spawnTimeout,
+    });
     return stdout.trim();
   } catch (error) {
     reportWarning(error);
@@ -386,7 +394,10 @@ function getGitRef() {
     return ref;
   }
   try {
-    const { stdout } = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { encoding: "utf-8" });
+    const { stdout } = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf-8",
+      timeout: spawnTimeout,
+    });
     return stdout.trim();
   } catch (error) {
     reportWarning(error);
@@ -552,17 +563,20 @@ async function getExecPathFromBuildKite(target) {
   mkdirSync(releasePath, { recursive: true });
   spawnSync("buildkite-agent", ["artifact", "download", "**", releasePath, "--step", target], {
     stdio: ["ignore", "inherit", "inherit"],
+    timeout: spawnTimeout,
     cwd,
   });
   const zipPath = join(releasePath, `${target}.zip`);
   if (isWindows) {
     spawnSync("powershell", ["-Command", `Expand-Archive -Path ${zipPath} -DestinationPath ${releasePath}`], {
       stdio: ["ignore", "inherit", "inherit"],
+      timeout: spawnTimeout,
       cwd,
     });
   } else {
     spawnSync("unzip", ["-o", zipPath, "-d", releasePath], {
       stdio: ["ignore", "inherit", "inherit"],
+      timeout: spawnTimeout,
       cwd,
     });
   }
