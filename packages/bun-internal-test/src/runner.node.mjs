@@ -112,7 +112,7 @@ async function runTests(target) {
         appendFileSync(summaryPath, summary);
       }
     } else if (isBuildKite) {
-      spawnSync("buildkite-agent", ["annotate", "--style", "error", summary], {
+      spawnSync("buildkite-agent", ["annotate", "--append", "--style", "error", summary], {
         stdio: ["ignore", "inherit", "inherit"],
         cwd,
       });
@@ -395,13 +395,14 @@ function getGitRef() {
 }
 
 function getConcurrency() {
+  // Temporary until tests are less flaky
+  if (isMacOS || isLinux) {
+    return 1;
+  }
   if (isInteractive) {
     return 1;
   }
   const cpuCount = cpus().length;
-  if (isCI) {
-    return Math.max(1, cpuCount - 1);
-  }
   return Math.max(1, Math.floor(cpuCount / 2));
 }
 
