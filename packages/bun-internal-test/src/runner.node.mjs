@@ -111,12 +111,19 @@ async function runTests(target) {
         appendFileSync(summaryPath, summary);
       }
     } else if (isBuildKite) {
+      const summaryPath = join(cwd, "summary.md");
+      appendFileSync(summaryPath, summary);
       const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
-      spawnSync("buildkite-agent", ["annotate", "--append", "--style", "error", "--context", context, summary], {
-        stdio: ["ignore", "inherit", "inherit"],
-        timeout: spawnTimeout,
-        cwd,
-      });
+      const { error, status, signal } = spawnSync(
+        "buildkite-agent",
+        ["annotate", "--append", "--style", "error", "--context", context, summaryPath],
+        {
+          stdio: ["ignore", "inherit", "inherit"],
+          timeout: spawnTimeout,
+          cwd,
+        },
+      );
+      console.log("Annotation upload:", { error, status, signal });
     }
   }
 
