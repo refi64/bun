@@ -112,11 +112,11 @@ async function runTests(target) {
       }
     } else if (isBuildKite) {
       const summaryPath = join(cwd, "summary.md");
-      appendFileSync(summaryPath, summary);
+      appendFileSync(summaryPath, stripAnsi(summary));
       const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
       const { error, status, signal } = spawnSync(
         "buildkite-agent",
-        ["annotate", "--append", "--style", "error", "--context", context, summaryPath],
+        ["annotate", "--append", "--style", "error", "--context", context, summary],
         {
           stdio: ["ignore", "inherit", "inherit"],
           timeout: spawnTimeout,
