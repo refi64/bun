@@ -8,9 +8,8 @@ import {
   statSync,
   mkdirSync,
   accessSync,
-  constants as fs,
-  writeFileSync,
   appendFileSync,
+  constants as fs,
 } from "node:fs";
 import { readdirSync } from "node:fs";
 import { tmpdir, cpus, hostname } from "node:os";
@@ -136,7 +135,6 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   let signalCode;
   let spawnError;
   let startedAt;
-  let lastUpdated;
   let subprocess;
   let stdout = "";
   await new Promise(resolve => {
@@ -161,55 +159,54 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
           BUN_INSTALL_CACHE_DIR: join(tmp, "cache"),
         },
       });
+      let doneCalls = 0;
+      const beforeDone = () => {
+        // TODO: wait for stderr as well, spawn.test currently causes it to hang
+        if (doneCalls++ === 1) {
+          done();
+        }
+      };
+      let timeoutId;
+      const done = () => {
+        subprocess.stderr.unref();
+        subprocess.stdout.unref();
+        subprocess.unref();
+        if (!signalCode && exitCode === undefined) {
+          subprocess.stdout.destroy();
+          subprocess.stderr.destroy();
+          subprocess.kill(9);
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        resolve();
+      };
       subprocess.on("spawn", () => {
         startedAt = Date.now();
-        lastUpdated = startedAt;
+        timeoutId = setTimeout(done, hardTestTimeout);
       });
       subprocess.on("error", error => {
-        lastUpdated = Date.now();
         spawnError = error;
-        resolve();
+        done();
       });
       subprocess.on("exit", (code, signal) => {
-        lastUpdated = Date.now();
         exitCode = code;
         signalCode = signal;
-        resolve();
+        if (signalCode || exitCode !== 0) {
+          beforeDone();
+        } else {
+          done();
+        }
       });
-      subprocess.stdout.unref();
+      subprocess.stdout.on("end", () => {
+        beforeDone();
+      });
       subprocess.stdout.on("data", chunk => {
-        lastUpdated = Date.now();
         stdout += chunk;
       });
-      subprocess.stderr.unref();
       subprocess.stderr.on("data", chunk => {
-        lastUpdated = Date.now();
         stdout += chunk;
       });
-      subprocess.unref();
-      const timeoutId = setInterval(() => {
-        if (exitCode !== undefined || signalCode || spawnError) {
-          clearInterval(timeoutId);
-          resolve();
-          return;
-        }
-        const lastTimestamp = isWindows ? startedAt : lastUpdated;
-        const remainingMs = timeout - (Date.now() - lastTimestamp);
-        if (remainingMs <= 0) {
-          clearInterval(timeoutId);
-          // reportError({
-          //   message: `Test ${testPath} timed out after ${timeout}ms`,
-          // });
-          subprocess.kill();
-          signalCode = "SIGTERM";
-          resolve();
-          return;
-        }
-        const duration = Date.now() - startedAt;
-        // reportWarning({
-        //   message: `Test ${testPath} is still running after ${duration}ms`,
-        // });
-      }, spawnTimeout);
     } catch (error) {
       spawnError = error;
       resolve();
@@ -413,12 +410,14 @@ function getGitRef() {
 }
 
 function getConcurrency() {
-  // Temporary until tests are less flaky
-  if (isMacOS || isLinux) {
-    return 1;
-  }
   if (isInteractive) {
     return 1;
+  }
+  const args = process.argv.slice(2);
+  for (const arg of args) {
+    if (arg.startsWith("--concurrency=")) {
+      return parseInt(arg.substring("--concurrency=".length), 10);
+    }
   }
   const cpuCount = cpus().length;
   return Math.max(1, Math.floor(cpuCount / 2));
@@ -917,7 +916,8 @@ function reportTestsToMarkdown(results) {
     }
 
     markdown += `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`;
-    markdown += `<pre><code>${stripAnsi(sanitizeStdout(stdout))}</code></pre>\n\n`;
+    const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
+    markdown += `<pre><code>${codePreview}</code></pre>\n\n`;
     markdown += `</details>\n\n`;
   }
 
@@ -1087,6 +1087,16 @@ function escapeGitHubAction(string) {
 
 function unescapeGitHubAction(string) {
   return string.replace(/%25/g, "%").replace(/%0D/g, "\r").replace(/%0A/g, "\n");
+}
+
+function escapeHtml(string) {
+  return string
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/`/g, "&#96;");
 }
 
 function parseDuration(duration) {
