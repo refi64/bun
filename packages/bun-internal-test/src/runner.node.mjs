@@ -116,9 +116,10 @@ async function runTests(target) {
       const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
       const { error, status, signal } = spawnSync(
         "buildkite-agent",
-        ["annotate", "--append", "--style", "error", "--context", context, summary],
+        ["annotate", "--append", "--style", "error", "--context", context],
         {
-          stdio: ["ignore", "inherit", "inherit"],
+          input: summary,
+          stdio: ["pipe", "inherit", "inherit"],
           timeout: spawnTimeout,
           cwd,
         },
