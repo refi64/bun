@@ -918,9 +918,14 @@ function reportTestsToMarkdown(results) {
     }
 
     markdown += `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`;
-    const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
-    markdown += `<pre><code>${codePreview}</code></pre>\n\n`;
-    markdown += `</details>\n\n`;
+    if (isBuildKite) {
+      const codePreview = escapeHtml(sanitizeStdout(stdout));
+      markdown += `\`\`\`terminal\n${codePreview}\n\`\`\``;
+    } else {
+      const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
+      markdown += `<pre><code>${codePreview}</code></pre>`;
+    }
+    markdown += `\n\n</details>\n\n`;
   }
 
   if (!markdown) {
