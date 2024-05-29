@@ -111,7 +111,8 @@ async function runTests(target) {
         appendFileSync(summaryPath, summary);
       }
     } else if (isBuildKite) {
-      spawnSync("buildkite-agent", ["annotate", "--append", "--style", "error", summary], {
+      const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
+      spawnSync("buildkite-agent", ["annotate", "--append", "--style", "error", "--context", context, summary], {
         stdio: ["ignore", "inherit", "inherit"],
         timeout: spawnTimeout,
         cwd,
@@ -919,7 +920,7 @@ function reportTestsToMarkdown(results) {
 
     markdown += `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`;
     if (isBuildKite) {
-      const codePreview = escapeHtml(sanitizeStdout(stdout));
+      const codePreview = escapeCodeBlock(sanitizeStdout(stdout));
       markdown += `\`\`\`terminal\n${codePreview}\n\`\`\``;
     } else {
       const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
@@ -932,7 +933,7 @@ function reportTestsToMarkdown(results) {
     return "";
   }
 
-  let summary = "## ";
+  let summary = "### ";
 
   const title = process.env["BUILDKITE_GROUP_LABEL"] || `${getOsEmoji()} ${getArchEmoji()}`;
   const buildUrl = getBuildUrl();
@@ -1104,6 +1105,10 @@ function escapeHtml(string) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;")
     .replace(/`/g, "&#96;");
+}
+
+function escapeCodeBlock(string) {
+  return string.replace(/`/g, "\\`");
 }
 
 function parseDuration(duration) {
