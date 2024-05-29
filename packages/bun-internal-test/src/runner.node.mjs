@@ -289,6 +289,8 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
     } else {
       error = "code 1";
     }
+  } else if (exitCode === undefined) {
+    error = "timeout";
   } else if (exitCode !== 0) {
     if (isWindows) {
       const winCode = getWindowsExitCode(exitCode);
