@@ -25,6 +25,8 @@ const isBuildKite = !!process.env["BUILDKITE"];
 const isBuildKiteTestSuite = !!process.env["BUILDKITE_ANALYTICS_TOKEN"];
 const isCI = !!process.env["CI"] || isGitHubAction || isBuildKite;
 const isInteractive = !isCI && process.argv.includes("-i") && process.stdout.isTTY;
+const shardId = parseInt(process.env["BUILDKITE_PARALLEL_JOB"]) || 0;
+const maxShards = parseInt(process.env["BUILDKITE_PARALLEL_JOB_COUNT"]) || 1;
 
 const cwd = resolve(import.meta.dirname, "../../..");
 const tmp = getTmpdir();
@@ -43,6 +45,7 @@ async function runTests(target) {
     println(`CI: ${getCI()}`);
     println(`Build URL: ${getBuildUrl()}`);
   }
+  println(`Shard: ${shardId} / ${maxShards}`);
 
   let execPath;
   if (isBuildKite) {
@@ -60,20 +63,15 @@ async function runTests(target) {
     runInstall(execPath, path);
   }
 
-  println("Finding tests...");
   const tests = getTests(testsPath);
-  const changedFiles = getChangedFiles(testsPath);
-  const changedTests = tests.filter(test => changedFiles.has(test));
-  println(`Found ${changedTests.length} changed tests`);
-  const unchangedTests = tests.filter(test => !changedFiles.has(test));
-  println(`Found ${unchangedTests.length} unchanged tests`);
-  println(`Found ${tests.length} total tests`);
+  println(`Found ${tests.length} tests...`);
 
-  println(`Running tests...`);
-  const orderedTests = [...changedTests, ...unchangedTests];
+  const firstTest = shardId * Math.ceil(tests.length / maxShards);
+  const lastTest = Math.min(firstTest + Math.ceil(tests.length / maxShards), tests.length);
+  println(`Running tests: ${firstTest} ... ${lastTest} / ${tests.length}`);
+
   let results = {};
-
-  for (const testPath of orderedTests) {
+  for (const testPath of tests.slice(firstTest, lastTest)) {
     const title = relative(cwd, join(testsPath, testPath));
     const result = await runAndReportTest({ cwd, execPath, testPath, tmpPath: tmp });
     results[title] = result;
@@ -924,8 +922,9 @@ function reportTestsToMarkdown(results) {
     append(`\n\n</details>\n\n`);
   }
 
-  if (!markdown) {
-    return "";
+  const content = new TextDecoder().decode(markdown.subarray(0, i));
+  if (!content || shardId > 0) {
+    return content;
   }
 
   let summary = "### ";
