@@ -1554,7 +1554,9 @@ pub const BundleV2 = struct {
 
         const waker = bun.Async.Waker.init() catch @panic("Failed to create waker");
         instance.waker = waker;
-        waker.loop.inc();
+
+        if (bun.Environment.isWindows)
+            waker.loop.inc();
 
         var has_bundled = false;
         while (true) {
