@@ -7,7 +7,7 @@ zig=
 
 CI="${CI:-}"
 if [ -n "$CI" ]; then
-  source $(dirname -- "${BASH_SOURCE[0]}")/download-zig.sh
+  bash $(dirname -- "${BASH_SOURCE[0]}")/download-zig.sh
 fi
 
 if [ -f "$cwd/.cache/zig/zig" ]; then
