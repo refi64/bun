@@ -61,7 +61,7 @@ async function runTests(target) {
   }
 
   println("Finding tests...");
-  const tests = getTests(testsPath).slice(0, 10);
+  const tests = getTests(testsPath);
   const changedFiles = getChangedFiles(testsPath);
   const changedTests = tests.filter(test => changedFiles.has(test));
   println(`Found ${changedTests.length} changed tests`);
