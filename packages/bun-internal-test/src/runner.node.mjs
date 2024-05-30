@@ -939,7 +939,7 @@ function reportTestsToMarkdown(results) {
   }
 
   summary += ` - ${failCount} failing\n\n`;
-  summary += new TextDecoder().decode(markdown);
+  summary += new TextDecoder().decode(markdown.subarray(0, i));
 
   return summary;
 }
