@@ -64,11 +64,20 @@ async function runTests(target) {
   }
 
   const tests = getTests(testsPath);
-  println(`Found ${tests.length} tests...`);
-
   const firstTest = shardId * Math.ceil(tests.length / maxShards);
   const lastTest = Math.min(firstTest + Math.ceil(tests.length / maxShards), tests.length);
-  println(`Running tests: ${firstTest} ... ${lastTest} / ${tests.length}`);
+  printGroup(`Running tests: ${firstTest} ... ${lastTest} / ${tests.length}`);
+
+  if (isBuildKite && shardId === 0) {
+    const title = process.env["BUILDKITE_GROUP_LABEL"] || `${getOsEmoji()} ${getArchEmoji()}`;
+    const buildUrl = getBuildUrl();
+    if (buildUrl) {
+      summary += `[${title}](${buildUrl})`;
+    } else {
+      summary += title;
+    }
+    reportAnnotationToBuildKite(title);
+  }
 
   let results = {};
   for (const testPath of tests.slice(firstTest, lastTest)) {
@@ -87,18 +96,7 @@ async function runTests(target) {
     } else if (isBuildKite) {
       const summaryPath = join(cwd, "summary.md");
       appendFileSync(summaryPath, stripAnsi(summary));
-      const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
-      const { error, status, signal } = spawnSync(
-        "buildkite-agent",
-        ["annotate", "--append", "--style", "error", "--context", context],
-        {
-          input: summary,
-          stdio: ["pipe", "inherit", "inherit"],
-          timeout: spawnTimeout,
-          cwd,
-        },
-      );
-      console.log("Annotation upload:", { error, status, signal });
+      reportAnnotationToBuildKite(summary);
     }
   }
 
@@ -922,25 +920,7 @@ function reportTestsToMarkdown(results) {
     append(`\n\n</details>\n\n`);
   }
 
-  const content = new TextDecoder().decode(markdown.subarray(0, i));
-  if (!content || shardId > 0) {
-    return content;
-  }
-
-  let summary = "### ";
-
-  const title = process.env["BUILDKITE_GROUP_LABEL"] || `${getOsEmoji()} ${getArchEmoji()}`;
-  const buildUrl = getBuildUrl();
-  if (buildUrl) {
-    summary += `[${title}](${buildUrl})`;
-  } else {
-    summary += title;
-  }
-
-  summary += ` - ${failCount} failing\n\n`;
-  summary += content;
-
-  return summary;
+  return new TextDecoder().decode(markdown.subarray(0, i));
 }
 
 async function reportTestsToBuildKite(results) {
@@ -976,6 +956,23 @@ async function reportTestsToBuildKite(results) {
     }
   } catch (error) {
     reportWarning(error);
+  }
+}
+
+function reportAnnotationToBuildKite(content) {
+  const context = process.env["BUILDKITE_STEP_ID"] || "bun-test";
+  const { error, status, signal } = spawnSync(
+    "buildkite-agent",
+    ["annotate", "--append", "--style", "error", "--context", context],
+    {
+      input: content,
+      stdio: ["pipe", "inherit", "inherit"],
+      timeout: spawnTimeout,
+      cwd,
+    },
+  );
+  if (error || status !== 0 || signal) {
+    console.error("Annotation failed:", { error, status, signal });
   }
 }
 
