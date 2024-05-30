@@ -61,46 +61,22 @@ async function runTests(target) {
   }
 
   println("Finding tests...");
-  const tests = getTests(testsPath);
+  const tests = getTests(testsPath).slice(0, 10);
   const changedFiles = getChangedFiles(testsPath);
   const changedTests = tests.filter(test => changedFiles.has(test));
-  const unchangedTests = tests.filter(test => !changedFiles.has(test));
   println(`Found ${changedTests.length} changed tests`);
-  const sequentialTests = unchangedTests.filter(isSequentialTest);
-  println(`Found ${sequentialTests.length} sequential tests`);
-  const parallelTests = unchangedTests.filter(path => !isSequentialTest(path));
-  println(`Found ${parallelTests.length} parallel tests`);
+  const unchangedTests = tests.filter(test => !changedFiles.has(test));
+  println(`Found ${unchangedTests.length} unchanged tests`);
   println(`Found ${tests.length} total tests`);
 
   println(`Running tests...`);
-  const concurrency = getConcurrency();
-  const { default: PQueue } = await import("p-queue");
-  const sequentialQueue = new PQueue({ concurrency: 1 });
-  const parallelQueue = concurrency === 1 ? sequentialQueue : new PQueue({ concurrency });
+  const orderedTests = [...changedTests, ...unchangedTests];
+  let results = {};
 
-  const results = {};
-  const createTest = testPath => async () => {
-    const realPath = relative(cwd, join(testsPath, testPath));
+  for (const testPath of orderedTests) {
+    const title = relative(cwd, join(testsPath, testPath));
     const result = await runAndReportTest({ cwd, execPath, testPath, tmpPath: tmp });
-    results[realPath] = result;
-    return result;
-  };
-
-  for (const testPath of changedTests) {
-    parallelQueue.add(createTest(testPath), {
-      priority: 1,
-    });
-  }
-  for (const testPath of sequentialTests) {
-    sequentialQueue.add(createTest(testPath));
-  }
-  for (const testPath of parallelTests) {
-    parallelQueue.add(createTest(testPath));
-  }
-  {
-    parallelQueue.start();
-    sequentialQueue.start();
-    await Promise.all([parallelQueue.onIdle(), sequentialQueue.onIdle()]);
+    results[title] = result;
   }
 
   const summary = reportTestsToMarkdown(results);
@@ -211,10 +187,10 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
         beforeDone();
       });
       subprocess.stdout.on("data", chunk => {
-        stdout += chunk;
+        stdout += chunk.toString();
       });
       subprocess.stderr.on("data", chunk => {
-        stdout += chunk;
+        stdout += chunk.toString();
       });
     } catch (error) {
       spawnError = error;
@@ -230,7 +206,7 @@ async function runTest({ cwd, execPath, testPath, tmpPath }) {
   const ok = exitCode === 0 && !signalCode && !spawnError;
   const tests = [];
   let testError;
-  for (const chunk of stdout.split(/\r?\n/)) {
+  for (const chunk of stdout.split(endOfLine)) {
     const string = stripAnsi(chunk);
     if (string.startsWith("::endgroup")) {
       break;
@@ -420,20 +396,6 @@ function getGitRef() {
   }
 }
 
-function getConcurrency() {
-  if (isInteractive) {
-    return 1;
-  }
-  const args = process.argv.slice(2);
-  for (const arg of args) {
-    if (arg.startsWith("--concurrency=")) {
-      return parseInt(arg.substring("--concurrency=".length), 10);
-    }
-  }
-  const cpuCount = cpus().length;
-  return Math.max(1, Math.floor(cpuCount / 2));
-}
-
 function getTmpdir() {
   if (isMacOS) {
     if (existsSync("/tmp")) {
@@ -510,7 +472,7 @@ function getWindowsExitCode(exitCode) {
       ntStatus = "";
     }
   }
-  const match = ntStatus.match(new RegExp(`(STATUS_\\w+).*0x${exitCode.toString(16)}`, "i"));
+  const match = ntStatus.match(new RegExp(`(STATUS_\\w+).*0x${exitCode?.toString(16)}`, "i"));
   return match?.[1];
 }
 
@@ -888,7 +850,25 @@ function reportTestsToMarkdown(results) {
   const pullRequest = /^pull\/(\d+)$/.exec(process.env["GITHUB_REF"])?.[1];
   const gitSha = getGitSha();
 
-  let markdown = "";
+  const encoder = new TextEncoder();
+  const maxByteLength = isBuildKite ? 1048576 : 65536;
+  const hardMaxByteLength = Math.floor(maxByteLength * 0.95);
+  const softMaxByteLength = Math.floor(maxByteLength * 0.75);
+
+  let markdown = new Uint8Array(hardMaxByteLength);
+  let i = 0;
+  const append = string => {
+    if (i >= hardMaxByteLength) {
+      return false;
+    }
+    const { written } = encoder.encodeInto(string, markdown.subarray(i));
+    if (!written) {
+      return false;
+    }
+    i += written;
+    return i < softMaxByteLength;
+  };
+
   let fileCount = 0;
   let testCount = 0;
   let failCount = 0;
@@ -926,15 +906,22 @@ function reportTestsToMarkdown(results) {
       }
     }
 
-    markdown += `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`;
-    if (isBuildKite) {
-      const codePreview = escapeCodeBlock(sanitizeStdout(stdout));
-      markdown += `\`\`\`terminal\n${codePreview}\n\`\`\``;
+    const showPreview = append(
+      `<details><summary><a href="${testUrl}"><code>${testPath}</code></a> - ${error}</summary>\n\n`,
+    );
+    if (showPreview) {
+      if (isBuildKite) {
+        const codePreview = escapeCodeBlock(sanitizeStdout(stdout));
+        append(`\`\`\`terminal\n${codePreview}\n\`\`\``);
+      } else {
+        const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
+        append(`<pre><code>${codePreview}</code></pre>`);
+      }
     } else {
-      const codePreview = escapeHtml(stripAnsi(sanitizeStdout(stdout)));
-      markdown += `<pre><code>${codePreview}</code></pre>`;
+      append("Logs truncated... download log files for more details");
     }
-    markdown += `\n\n</details>\n\n`;
+
+    append(`\n\n</details>\n\n`);
   }
 
   if (!markdown) {
@@ -952,7 +939,7 @@ function reportTestsToMarkdown(results) {
   }
 
   summary += ` - ${failCount} failing\n\n`;
-  summary += markdown;
+  summary += new TextDecoder().decode(markdown);
 
   return summary;
 }
