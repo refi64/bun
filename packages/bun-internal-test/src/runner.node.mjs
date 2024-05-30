@@ -72,11 +72,10 @@ async function runTests(target) {
     const title = process.env["BUILDKITE_GROUP_LABEL"] || `${getOsEmoji()} ${getArchEmoji()}`;
     const buildUrl = getBuildUrl();
     if (buildUrl) {
-      summary += `[${title}](${buildUrl})`;
+      reportAnnotationToBuildKite(`[${title}](${buildUrl})`);
     } else {
-      summary += title;
+      reportAnnotationToBuildKite(title);
     }
-    reportAnnotationToBuildKite(title);
   }
 
   let results = {};

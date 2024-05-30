@@ -23,6 +23,7 @@ BUILT_ANY=0
 SUBMODULES=
 CACHE_DIR=
 CACHE=0
+BUN_DEPS_CACHE_DIR="${BUN_DEPS_CACHE_DIR:-$BUN_DEPS_OUT_DIR}"
 if [ -n "$BUN_DEPS_CACHE_DIR" ]; then
     CACHE_DIR="$BUN_DEPS_CACHE_DIR"
     CACHE=1
@@ -32,12 +33,12 @@ fi
 dep() {
     local submodule="$1"
     local script="$2"
+    CACHE_KEY=
+    if [ "$CACHE" == "1" ]; then
+        CACHE_KEY="$submodule/$(echo "$SUBMODULES" | grep "$submodule" | git hash-object --stdin)"
+    fi
     if [ -z "$FORCE" ]; then
         HAS_ALL_DEPS=1
-        CACHE_KEY=
-        if [ "$CACHE" == "1" ]; then
-            CACHE_KEY="$submodule/$(echo "$SUBMODULES" | grep "$submodule" | git hash-object --stdin)"
-        fi
         shift
         for lib in "${@:2}"; do
             if [ ! -f "$BUN_DEPS_OUT_DIR/$lib" ]; then
