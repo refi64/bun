@@ -201,10 +201,10 @@ steps:
           - "node packages/bun-internal-test/src/runner.node.mjs bun-darwin-x64"
 
   - key: "build-darwin-x64-baseline-ci"
-    group: ":darwin: baseline"
+    group: ":darwin: x64-baseline"
     steps:
       - key: "bun-darwin-x64-baseline-deps"
-        label: ":darwin: baseline - bun-deps"
+        label: ":darwin: x64-baseline - bun-deps"
         agents:
           os: "darwin"
           arch: "x64"
@@ -219,7 +219,7 @@ steps:
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-darwin-x64-baseline-zig"
-        label: ":darwin: baseline - bun-zig"
+        label: ":darwin: x64-baseline - bun-zig"
         agents:
           os: "darwin"
           arch: "aarch64"
@@ -233,7 +233,7 @@ steps:
         command:
           - "./scripts/build-zig.sh darwin x64"
       - key: "bun-darwin-x64-baseline-cpp"
-        label: ":darwin: baseline - bun-cpp"
+        label: ":darwin: x64-baseline - bun-cpp"
         agents:
           os: "darwin"
           arch: "x64"
@@ -247,7 +247,7 @@ steps:
         command:
           - "./scripts/build-cpp.sh"
       - key: "bun-darwin-x64-baseline"
-        label: ":darwin: baseline - bun"
+        label: ":darwin: x64-baseline - bun"
         depends_on:
           - "bun-darwin-x64-baseline-deps"
           - "bun-darwin-x64-baseline-zig"
@@ -286,7 +286,7 @@ steps:
           zip -r bun-darwin-x64-baseline-profile.zip bun-darwin-x64-baseline-profile
           zip -r bun-darwin-x64-baseline.zip bun-darwin-x64-baseline
       - key: "bun-darwin-x64-baseline-test"
-        label: ":darwin: baseline - bun-test-%n"
+        label: ":darwin: x64-baseline - bun-test-%n"
         parallelism: 5
         depends_on:
           - "bun-darwin-x64-baseline"
@@ -498,10 +498,10 @@ steps:
           - "node packages/bun-internal-test/src/runner.node.mjs bun-linux-x64"
 
   - key: "build-linux-x64-baseline-ci"
-    group: ":linux: baseline"
+    group: ":linux: x64-baseline"
     steps:
       - key: "bun-linux-x64-baseline-deps"
-        label: ":linux: baseline - bun-deps"
+        label: ":linux: x64-baseline - bun-deps"
         agents:
           os: "linux"
           arch: "x64"
@@ -516,7 +516,7 @@ steps:
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-linux-x64-baseline-zig"
-        label: ":linux: baseline - bun-zig"
+        label: ":linux: x64-baseline - bun-zig"
         agents:
           os: "linux"
           arch: "x64"
@@ -530,7 +530,7 @@ steps:
         command:
           - "./scripts/build-zig.sh linux x64"
       - key: "bun-linux-x64-baseline-cpp"
-        label: ":linux: baseline - bun-cpp"
+        label: ":linux: x64-baseline - bun-cpp"
         agents:
           os: "linux"
           arch: "x64"
@@ -544,7 +544,7 @@ steps:
         command:
           - "./scripts/build-cpp.sh"
       - key: "bun-linux-x64-baseline"
-        label: ":linux: baseline - bun"
+        label: ":linux: x64-baseline - bun"
         depends_on:
           - "bun-linux-x64-baseline-deps"
           - "bun-linux-x64-baseline-zig"
@@ -583,7 +583,7 @@ steps:
           zip -r bun-linux-x64-baseline-profile.zip bun-linux-x64-baseline-profile
           zip -r bun-linux-x64-baseline.zip bun-linux-x64-baseline
       - key: "bun-linux-x64-baseline-test"
-        label: ":linux: baseline - bun-test-%n"
+        label: ":linux: x64-baseline - bun-test-%n"
         parallelism: 5
         depends_on:
           - "bun-linux-x64-baseline"
