@@ -15,6 +15,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -29,6 +30,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh darwin aarch64"
@@ -42,6 +44,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -57,6 +60,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -105,6 +109,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -119,6 +124,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh darwin x64"
@@ -132,6 +138,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -147,6 +154,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -195,6 +203,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -209,6 +218,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh darwin x64"
@@ -222,6 +232,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -237,6 +248,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -285,6 +297,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -299,6 +312,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh linux aarch64"
@@ -312,6 +326,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -327,6 +342,7 @@ steps:
         env:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -375,6 +391,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -389,6 +406,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh linux x64"
@@ -402,6 +420,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -417,6 +436,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -465,6 +485,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
           BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
@@ -479,6 +500,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh linux x64"
@@ -492,6 +514,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-cpp.sh"
@@ -507,6 +530,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command: |
           mkdir -p release
@@ -566,6 +590,7 @@ steps:
         env:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh windows x64"
@@ -654,6 +679,7 @@ steps:
         env:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
+          SCCACHE_DIR: "$$HOME/.cache/sccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
         command:
           - "./scripts/build-zig.sh windows x64"
