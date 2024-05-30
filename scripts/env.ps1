@@ -49,10 +49,10 @@ $CPUS = if ($env:CPUS) { $env:CPUS } else { (Get-CimInstance -Class Win32_Proces
 $CC = "clang-cl"
 $CXX = "clang-cl"
 
-$CFLAGS = '/O2'
-# $CFLAGS = '/O2 /MT'
-$CXXFLAGS = '/O2'
-# $CXXFLAGS = '/O2 /MT'
+$CFLAGS = '/O2 /Zi'
+# $CFLAGS = '/O2 /Z7 /MT'
+$CXXFLAGS = '/O2 /Zi'
+# $CXXFLAGS = '/O2 /Z7 /MT'
 
 $CPU_NAME = if ($Baseline) { "nehalem" } else { "haswell" };
 
@@ -75,6 +75,14 @@ $env:CPUS = $CPUS
 
 if ($Baseline) {
   $CMAKE_FLAGS += "-DUSE_BASELINE_BUILD=ON"
+}
+
+if (Get-Command sccache -ErrorAction SilentlyContinue) {
+  Write-Host "Using sccache"
+  $CMAKE_FLAGS += "-DCMAKE_C_COMPILER_LAUNCHER=sccache"
+  $CMAKE_FLAGS += "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache"
+  $CMAKE_FLAGS += "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
+  $CMAKE_FLAGS += "-DCMAKE_POLICY_CMP0141=NEW"
 }
 
 $null = New-Item -ItemType Directory -Force -Path $BUN_DEPS_OUT_DIR
