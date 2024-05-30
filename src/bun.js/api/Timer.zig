@@ -384,7 +384,7 @@ pub const Timeout = struct {
         cancelled: bool = false,
 
         event_loop: *JSC.EventLoop,
-        timer: if (Environment.isWindows) uv.uv_timer_t else bun.io.Timer = if (Environment.isWindows) std.mem.zeroes(uv.uv_timer_t) else .{
+        timer: if (Environment.isWindows) uv.Timer else bun.io.Timer = if (Environment.isWindows) std.mem.zeroes(uv.Timer) else .{
             .tag = .TimerReference,
             .next = std.mem.zeroes(std.os.timespec),
         },
@@ -396,7 +396,7 @@ pub const Timeout = struct {
         scheduled_count: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 
         pub const Pool = bun.HiveArray(TimerReference, 1024).Fallback;
-        fn onUVRequest(handle: *uv.uv_timer_t) callconv(.C) void {
+        fn onUVRequest(handle: *uv.Timer) callconv(.C) void {
             const data = handle.data orelse @panic("Invalid data on uv timer");
             var this: *TimerReference = @ptrCast(@alignCast(data));
             if (this.cancelled) {
@@ -480,8 +480,8 @@ pub const Timeout = struct {
             };
             if (Environment.isWindows) {
                 this.timer.data = this;
-                if (uv.uv_timer_init(uv.Loop.get(), &this.timer) != 0) {
-                    bun.outOfMemory();
+                if (uv.uv_timer_init(uv.Loop.get(), &this.timer).errEnum()) |err| {
+                    bun.Output.panic("Failed to start timer: {s}", .{@tagName(err)});
                 }
                 // we manage the ref/unref in the same way that linux does
                 uv.uv_unref(@ptrCast(&this.timer));
@@ -496,7 +496,9 @@ pub const Timeout = struct {
             if (Environment.isWindows) {
                 // we MUST update the timer so we avoid early firing
                 uv.uv_update_time(uv.Loop.get());
-                if (uv.uv_timer_start(&this.timer, TimerReference.onUVRequest, @intCast(ms), 0) != 0) @panic("unable to start timer");
+                if (this.timer.start(TimerReference.onUVRequest, @intCast(ms), 0).errEnum()) |err| {
+                    bun.Output.panic("Failed to start timer: {s}", .{@tagName(err)});
+                }
                 return;
             }
 

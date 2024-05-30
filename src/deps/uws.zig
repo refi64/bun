@@ -2774,9 +2774,14 @@ pub const WindowsLoop = extern struct {
     internal_loop_data: InternalLoopData align(16),
 
     uv_loop: *uv.Loop,
-    is_default: c_int,
     pre: *uv.uv_prepare_t,
     check: *uv.uv_check_t,
+
+    is_default: c_int,
+    active_handles: u32,
+    timer: uv.Timer = undefined,
+
+    const log = bun.Output.scoped(.Loop, false);
 
     pub fn get() *WindowsLoop {
         return uws_get_loop_with_native(bun.windows.libuv.Loop.get());
@@ -2788,16 +2793,46 @@ pub const WindowsLoop = extern struct {
         return this.internal_loop_data.iteration_nr;
     }
 
-    pub fn addActive(this: *const WindowsLoop, val: u32) void {
-        this.uv_loop.addActive(val);
+    pub fn inc(this: *WindowsLoop) void {
+        if (this.active_handles == 0) this.startKeepAliveTimer();
+        this.active_handles += 1;
     }
 
-    pub fn subActive(this: *const WindowsLoop, val: u32) void {
-        this.uv_loop.subActive(val);
+    pub fn dec(this: *WindowsLoop) void {
+        this.active_handles -= 1;
+        if (this.active_handles == 0) this.stopKeepAliveTimer();
     }
 
-    pub fn isActive(this: *const WindowsLoop) bool {
-        return this.uv_loop.isActive();
+    pub fn ref(this: *WindowsLoop) void {
+        log("ref", .{});
+        if (this.active_handles == 0) this.startKeepAliveTimer();
+        this.active_handles += 1;
+    }
+
+    pub fn unref(this: *WindowsLoop) void {
+        log("unref", .{});
+        this.active_handles -|= 1;
+        if (this.active_handles == 0) this.stopKeepAliveTimer();
+    }
+
+    pub fn isActive(this: *const Loop) bool {
+        return this.active_handles > 0 or this.uv_loop.isActive();
+    }
+
+    // This exists as a method so that we can stick a debugger in here
+    pub fn addActive(this: *WindowsLoop, value: u32) void {
+        log("add {d} + {d} = {d}", .{ this.active_handles, value, this.active_handles +| value });
+        if (value == 0) return;
+        if (this.active_handles == 0) this.startKeepAliveTimer();
+        this.active_handles +|= value;
+    }
+
+    // This exists as a method so that we can stick a debugger in here
+    pub fn subActive(this: *WindowsLoop, value: u32) void {
+        log("sub {d} - {d} = {d}", .{ this.active_handles, value, this.active_handles -| value });
+
+        this.active_handles -|= value;
+        if (this.active_handles == 0) this.stopKeepAliveTimer();
     }
 
     pub fn wakeup(this: *WindowsLoop) void {
@@ -2832,16 +2867,27 @@ pub const WindowsLoop = extern struct {
     pub const tick = run;
     pub const wait = run;
 
-    pub fn inc(this: *WindowsLoop) void {
-        this.uv_loop.inc();
+    pub fn startKeepAliveTimer(this: *WindowsLoop) void {
+        if (uv.uv_timer_init(this.uv_loop, &this.timer).errEnum()) |err| {
+            bun.Output.panic("Failed to start timer: {s}", .{@tagName(err)});
+        }
+        if (this.timer.start(
+            &timerCallback,
+            std.math.maxInt(u64),
+            std.math.maxInt(u64),
+        ).errEnum()) |err| {
+            bun.Output.panic("Failed to start timer: {s}", .{@tagName(err)});
+        }
     }
 
-    pub fn dec(this: *WindowsLoop) void {
-        this.uv_loop.dec();
+    pub fn stopKeepAliveTimer(this: *WindowsLoop) void {
+        _ = this.timer.stop();
+        _ = uv.uv_close(@ptrCast(&this.timer), null);
     }
 
-    pub const ref = inc;
-    pub const unref = dec;
+    pub fn timerCallback(timer: *uv.Timer) callconv(.C) void {
+        _ = timer;
+    }
 
     pub fn nextTick(this: *Loop, comptime UserType: type, user_data: UserType, comptime deferCallback: fn (ctx: UserType) void) void {
         const Handler = struct {
@@ -2881,6 +2927,7 @@ extern fn us_create_loop(
 extern fn us_loop_free(loop: ?*Loop) void;
 extern fn us_loop_ext(loop: ?*Loop) ?*anyopaque;
 extern fn us_loop_run(loop: ?*Loop) void;
+extern fn us_loop_run_wait(loop: ?*Loop) void;
 extern fn us_loop_pump(loop: ?*Loop) void;
 extern fn us_wakeup_loop(loop: ?*Loop) void;
 extern fn us_loop_integrate(loop: ?*Loop) void;

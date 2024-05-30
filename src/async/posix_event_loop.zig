@@ -58,7 +58,7 @@ pub const KeepAlive = struct {
             event_loop_ctx_.loop().subActive(1);
             return;
         }
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         event_loop_ctx.platformEventLoop().subActive(1);
     }
 
@@ -72,7 +72,7 @@ pub const KeepAlive = struct {
 
     /// Prevent a poll from keeping the process alive on the next tick.
     pub fn unrefOnNextTick(this: *KeepAlive, event_loop_ctx_: anytype) void {
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         if (this.status != .active)
             return;
         this.status = .inactive;
@@ -99,7 +99,7 @@ pub const KeepAlive = struct {
             event_loop_ctx_.ref();
             return;
         }
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         event_loop_ctx.platformEventLoop().ref();
     }
 
@@ -272,7 +272,7 @@ pub const FilePoll = struct {
         switch (this.allocator_type) {
             .js => {
                 const vm = JSC.VirtualMachine.get();
-                const handle = JSC.AbstractVM(vm);
+                const handle = JSC.abstractVM(vm);
                 // const loop = vm.event_loop_handle.?;
                 const loop = handle.platformEventLoop();
                 const file_polls = handle.filePolls();
@@ -280,7 +280,7 @@ pub const FilePoll = struct {
             },
             .mini => {
                 const vm = JSC.MiniEventLoop.global;
-                const handle = JSC.AbstractVM(vm);
+                const handle = JSC.abstractVM(vm);
                 // const loop = vm.event_loop_handle.?;
                 const loop = handle.platformEventLoop();
                 const file_polls = handle.filePolls();
@@ -315,7 +315,7 @@ pub const FilePoll = struct {
     }
 
     pub fn deinitWithVM(this: *FilePoll, vm_: anytype) void {
-        const vm = JSC.AbstractVM(vm_);
+        const vm = JSC.abstractVM(vm_);
         // const loop = vm.event_loop_handle.?;
         const loop = vm.platformEventLoop();
         this.deinitPossiblyDefer(vm_, loop, vm.filePolls(), false);
@@ -617,7 +617,7 @@ pub const FilePoll = struct {
         if (comptime @TypeOf(event_loop_ctx_) == JSC.EventLoopHandle) {
             event_loop_ctx_.loop().subActive(@as(u32, @intFromBool(this.flags.contains(.has_incremented_active_count))));
         } else {
-            const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+            const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
             // log("{x} disableKeepingProcessAlive", .{@intFromPtr(this)});
             // vm.event_loop_handle.?.subActive(@as(u32, @intFromBool(this.flags.contains(.has_incremented_active_count))));
             event_loop_ctx.platformEventLoop().subActive(@as(u32, @intFromBool(this.flags.contains(.has_incremented_active_count))));
@@ -650,7 +650,7 @@ pub const FilePoll = struct {
         if (comptime @TypeOf(event_loop_ctx_) == JSC.EventLoopHandle) {
             event_loop_ctx_.loop().addActive(@as(u32, @intFromBool(!this.flags.contains(.has_incremented_active_count))));
         } else {
-            const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+            const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
             event_loop_ctx.platformEventLoop().addActive(@as(u32, @intFromBool(!this.flags.contains(.has_incremented_active_count))));
         }
 
@@ -706,7 +706,7 @@ pub const FilePoll = struct {
     }
 
     pub fn initWithOwner(vm_: anytype, fd: bun.FileDescriptor, flags: Flags.Struct, owner: Owner) *FilePoll {
-        const vm = JSC.AbstractVM(vm_);
+        const vm = JSC.abstractVM(vm_);
         var poll = vm.allocFilePoll();
         poll.fd = fd;
         poll.flags = Flags.Set.init(flags);
@@ -751,7 +751,7 @@ pub const FilePoll = struct {
     }
 
     pub fn onEnded(this: *FilePoll, event_loop_ctx_: anytype) void {
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         this.flags.remove(.keeps_event_loop_alive);
         this.flags.insert(.closed);
         // this.deactivate(vm.event_loop_handle.?);

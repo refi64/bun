@@ -4824,7 +4824,7 @@ pub const NodeFS = struct {
 
         if (Environment.isWindows) {
             var req: uv.fs_t = uv.fs_t.uninitialized;
-            const rc = uv.uv_fs_mkdtemp(bun.Async.Loop.get(), &req, @ptrCast(prefix_buf.ptr), null);
+            const rc = uv.uv_fs_mkdtemp(bun.windows.libuv.Loop.get(), &req, @ptrCast(prefix_buf.ptr), null);
             if (rc.errno()) |errno| {
                 return .{ .err = .{ .errno = errno, .syscall = .mkdtemp, .path = prefix_buf[0 .. len + 6] } };
             }
@@ -5818,7 +5818,7 @@ pub const NodeFS = struct {
             var req: uv.fs_t = uv.fs_t.uninitialized;
             defer req.deinit();
             const rc = uv.uv_fs_realpath(
-                bun.Async.Loop.get(),
+                bun.windows.libuv.Loop.get(),
                 &req,
                 args.path.sliceZ(&this.sync_error_buf).ptr,
                 null,
@@ -6183,7 +6183,7 @@ pub const NodeFS = struct {
             var req: uv.fs_t = uv.fs_t.uninitialized;
             defer req.deinit();
             const rc = uv.uv_fs_utime(
-                bun.Async.Loop.get(),
+                bun.windows.libuv.Loop.get(),
                 &req,
                 args.path.sliceZ(&this.sync_error_buf).ptr,
                 args.atime,
@@ -6223,7 +6223,7 @@ pub const NodeFS = struct {
             var req: uv.fs_t = uv.fs_t.uninitialized;
             defer req.deinit();
             const rc = uv.uv_fs_lutime(
-                bun.Async.Loop.get(),
+                bun.windows.libuv.Loop.get(),
                 &req,
                 args.path.sliceZ(&this.sync_error_buf).ptr,
                 args.atime,

@@ -1204,6 +1204,15 @@
       "cwd": "${workspaceFolder}/packages/bun-internal-test",
       "console": "internalConsole",
     },
+    {
+      "type": "cppvsdbg",
+      "sourceFileMap": {
+        "D:\\a\\WebKit\\WebKit\\Source": "${workspaceFolder}\\src\\bun.js\\WebKit\\Source",
+      },
+      "request": "attach",
+      "name": "Windows: attach",
+      "processId": "${command:pickProcess}",
+    },
   ],
   "inputs": [
     {

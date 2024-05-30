@@ -5,7 +5,7 @@ const uws = bun.uws;
 const Environment = bun.Environment;
 const std = @import("std");
 const uv = bun.windows.libuv;
-pub const Loop = uv.Loop;
+pub const Loop = uws.Loop;
 
 pub const KeepAlive = struct {
     status: Status = .inactive,
@@ -58,7 +58,7 @@ pub const KeepAlive = struct {
             event_loop_ctx_.loop().subActive(1);
             return;
         }
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         event_loop_ctx.platformEventLoop().subActive(1);
     }
 
@@ -98,7 +98,7 @@ pub const KeepAlive = struct {
             event_loop_ctx_.ref();
             return;
         }
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         event_loop_ctx.platformEventLoop().ref();
     }
 
@@ -151,7 +151,7 @@ pub const FilePoll = struct {
     /// Make calling ref() on this poll into a no-op.
     // pub fn disableKeepingProcessAlive(this: *FilePoll, vm: *JSC.VirtualMachine) void {
     pub fn disableKeepingProcessAlive(this: *FilePoll, abstract_vm: anytype) void {
-        const vm = JSC.AbstractVM(abstract_vm);
+        const vm = JSC.abstractVM(abstract_vm);
         if (this.flags.contains(.closed))
             return;
         this.flags.insert(.closed);
@@ -239,7 +239,7 @@ pub const FilePoll = struct {
     }
 
     pub fn enableKeepingProcessAlive(this: *FilePoll, abstract_vm: anytype) void {
-        const vm = JSC.AbstractVM(abstract_vm);
+        const vm = JSC.abstractVM(abstract_vm);
         if (!this.flags.contains(.closed))
             return;
         this.flags.remove(.closed);
@@ -279,7 +279,7 @@ pub const FilePoll = struct {
     }
 
     pub fn onEnded(this: *FilePoll, event_loop_ctx_: anytype) void {
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         this.flags.remove(.keeps_event_loop_alive);
         this.flags.insert(.closed);
         // this.deactivate(vm.event_loop_handle.?);
@@ -288,7 +288,7 @@ pub const FilePoll = struct {
 
     /// Prevent a poll from keeping the process alive.
     pub fn unref(this: *FilePoll, abstract_vm: anytype) void {
-        const vm = JSC.AbstractVM(abstract_vm);
+        const vm = JSC.abstractVM(abstract_vm);
         if (!this.canUnref())
             return;
         log("unref", .{});
@@ -303,7 +303,7 @@ pub const FilePoll = struct {
             return;
         log("ref", .{});
         // this.activate(vm.event_loop_handle.?);
-        const event_loop_ctx = JSC.AbstractVM(event_loop_ctx_);
+        const event_loop_ctx = JSC.abstractVM(event_loop_ctx_);
         this.activate(event_loop_ctx.platformEventLoop());
     }
 

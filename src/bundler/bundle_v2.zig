@@ -1220,6 +1220,7 @@ pub const BundleV2 = struct {
 
         pub fn onComplete(this: *JSBundleCompletionTask) void {
             var globalThis = this.globalThis;
+            globalThis.assertOnJSThread();
             defer this.deref();
 
             this.poll_ref.unref(globalThis.bunVM());
@@ -1551,7 +1552,11 @@ pub const BundleV2 = struct {
     pub fn generateInNewThreadWrap(instance: *BundleThread) void {
         Output.Source.configureNamedThread("Bundler");
 
-        instance.waker = bun.Async.Waker.init() catch @panic("Failed to create waker");
+        std.debug.print("new bundler thread: {}\n", .{std.Thread.getCurrentId()});
+
+        const waker = bun.Async.Waker.init() catch @panic("Failed to create waker");
+        instance.waker = waker;
+        waker.loop.inc();
 
         var has_bundled = false;
         while (true) {
@@ -1575,7 +1580,7 @@ pub const BundleV2 = struct {
                 has_bundled = false;
             }
 
-            _ = instance.waker.?.wait();
+            _ = waker.wait();
         }
     }
 

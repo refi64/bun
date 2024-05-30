@@ -1337,6 +1337,10 @@ pub const EventLoop = struct {
         return this.virtual_machine.event_loop_handle.?;
     }
 
+    pub fn uvLoop(this: *const EventLoop) *bun.windows.libuv.Loop {
+        return this.virtual_machine.uvLoop();
+    }
+
     pub fn autoTick(this: *EventLoop) void {
         var ctx = this.virtual_machine;
         var loop = this.usocketsLoop();
@@ -1364,7 +1368,10 @@ pub const EventLoop = struct {
             loop.tick();
 
             if (comptime Environment.isDebug) {
-                log("tick {}", .{bun.fmt.fmtDuration(event_loop_sleep_timer.read())});
+                log("{} tick {}", .{
+                    std.Thread.getCurrentId(),
+                    bun.fmt.fmtDuration(event_loop_sleep_timer.read()),
+                });
             }
         } else {
             loop.tickWithoutIdle();
@@ -1763,7 +1770,7 @@ pub const EventLoopKind = enum {
     }
 };
 
-pub fn AbstractVM(inner: anytype) switch (@TypeOf(inner)) {
+pub fn abstractVM(inner: anytype) switch (@TypeOf(inner)) {
     *JSC.VirtualMachine => JsVM,
     *JSC.MiniEventLoop => MiniVM,
     else => @compileError("Invalid event loop ctx: " ++ @typeName(@TypeOf(inner))),

@@ -592,7 +592,7 @@ pub const ImportWatcher = union(enum) {
     }
 };
 
-pub const PlatformEventLoop = if (Environment.isPosix) uws.Loop else bun.Async.Loop;
+pub const PlatformEventLoop = uws.Loop;
 
 /// TODO: rename this to ScriptExecutionContext
 /// This is the shared global state for a single JS instance execution
@@ -740,11 +740,12 @@ pub const VirtualMachine = struct {
         return uws.Loop.get();
     }
 
-    pub fn uvLoop(this: *const VirtualMachine) *bun.Async.Loop {
+    pub fn uvLoop(this: *const VirtualMachine) *bun.windows.libuv.Loop {
         if (Environment.allow_assert) {
-            return this.event_loop_handle orelse @panic("libuv event_loop_handle is null");
+            return (this.event_loop_handle orelse @panic("libuv event_loop_handle is null"))
+                .uv_loop;
         }
-        return this.event_loop_handle.?;
+        return this.event_loop_handle.?.uv_loop;
     }
 
     pub fn isMainThread(this: *const VirtualMachine) bool {

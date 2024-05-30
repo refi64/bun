@@ -1357,6 +1357,16 @@ pub inline fn handleErrorReturnTrace(err: anyerror, maybe_trace: ?*std.builtin.S
 
 const stdDumpStackTrace = debug.dumpStackTrace;
 
+pub fn dumpCurrentStackTrace(addr: ?usize) void {
+    var addr_buf: [32]usize = undefined;
+    var trace: std.builtin.StackTrace = .{
+        .index = 0,
+        .instruction_addresses = &addr_buf,
+    };
+    std.debug.captureStackTrace(addr orelse @returnAddress(), &trace);
+    dumpStackTrace(trace);
+}
+
 /// Version of the standard library dumpStackTrace that has some fallbacks for
 /// cases where such logic fails to run.
 pub fn dumpStackTrace(trace: std.builtin.StackTrace) void {
@@ -1372,19 +1382,19 @@ pub fn dumpStackTrace(trace: std.builtin.StackTrace) void {
     }
 
     switch (bun.Environment.os) {
-        .windows => attempt_dump: {
-            // Windows has issues with opening the PDB file sometimes.
-            const debug_info = debug.getSelfDebugInfo() catch |err| {
-                stderr.print("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)}) catch return;
-                break :attempt_dump;
-            };
-            var arena = bun.ArenaAllocator.init(bun.default_allocator);
-            defer arena.deinit();
-            debug.writeStackTrace(trace, stderr, arena.allocator(), debug_info, std.io.tty.detectConfig(std.io.getStdErr())) catch |err| {
-                stderr.print("Unable to dump stack trace: {s}\nFallback trace:\n", .{@errorName(err)}) catch return;
-                break :attempt_dump;
-            };
-            return;
+        .windows => {
+            // Zig's PDB decoder sometimes hits unreachable, other times cannot decode it
+
+            // const debug_info = debug.getSelfDebugInfo() catch |err| {
+            //     stderr.print("Unable to dump stack trace: Unable to open debug info: {s}\n", .{@errorName(err)}) catch return;
+            //     break :attempt_dump;
+            // };
+            // var arena = bun.ArenaAllocator.init(bun.default_allocator);
+            // defer arena.deinit();
+            // debug.writeStackTrace(trace, stderr, arena.allocator(), debug_info, std.io.tty.detectConfig(std.io.getStdErr())) catch |err| {
+            //     stderr.print("Unable to dump stack trace: {s}\nFallback trace:\n", .{@errorName(err)}) catch return;
+            //     break :attempt_dump;
+            // };
         },
         .linux => {
             // Linux doesnt seem to be able to decode it's own debug info.

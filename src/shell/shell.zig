@@ -246,7 +246,7 @@ pub const GlobalJS = struct {
     }
 
     pub inline fn platformEventLoop(this: @This()) *JSC.PlatformEventLoop {
-        const loop = JSC.AbstractVM(this.eventLoopCtx());
+        const loop = JSC.abstractVM(this.eventLoopCtx());
         return loop.platformEventLoop();
     }
 
@@ -328,7 +328,7 @@ pub const GlobalMini = struct {
     }
 
     pub inline fn platformEventLoop(this: @This()) *JSC.PlatformEventLoop {
-        const loop = JSC.AbstractVM(this.eventLoopCtx());
+        const loop = JSC.abstractVM(this.eventLoopCtx());
         return loop.platformEventLoop();
     }
 };

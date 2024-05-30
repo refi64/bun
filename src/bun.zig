@@ -3264,6 +3264,12 @@ pub fn assert(value: bool) callconv(callconv_inline) void {
     }
 }
 
+pub fn releaseAssert(value: bool) callconv(callconv_inline) void {
+    if (!value) {
+        assertionFailure();
+    }
+}
+
 /// This has no effect on the real code but capturing 'a' and 'b' into parameters makes assertion failures much easier inspect in a debugger.
 pub inline fn assert_eql(a: anytype, b: anytype) void {
     return assert(a == b);

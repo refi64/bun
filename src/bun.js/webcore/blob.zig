@@ -1995,11 +1995,10 @@ pub const Blob = struct {
                         },
                     }
                 };
-                const loop = this.event_loop.virtual_machine.event_loop_handle.?;
                 this.io_request.data = @ptrCast(this);
 
                 const rc = libuv.uv_fs_copyfile(
-                    loop,
+                    this.event_loop.uvLoop(),
                     &this.io_request,
                     old_path,
                     new_path,

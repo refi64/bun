@@ -389,7 +389,7 @@ pub const WriteFileWindows = struct {
         });
         file_blob.store.?.ref();
         bytes_blob.store.?.ref();
-        write_file.io_request.loop = event_loop.virtual_machine.event_loop_handle.?;
+        write_file.io_request.loop = event_loop.uvLoop();
         write_file.io_request.data = write_file;
 
         switch (file_blob.store.?.data.file.pathlike) {
@@ -412,7 +412,7 @@ pub const WriteFileWindows = struct {
                     break :brk bun.uvfdcast(file_blob.store.?.data.file.pathlike.fd);
                 };
 
-                write_file.doWriteLoop(write_file.loop());
+                write_file.doWriteLoop(write_file.uvLoop());
             },
         }
 
@@ -422,15 +422,15 @@ pub const WriteFileWindows = struct {
     pub const ResultType = WriteFile.ResultType;
     pub const OnWriteFileCallback = WriteFile.OnWriteFileCallback;
 
-    pub inline fn loop(this: *const WriteFileWindows) *uv.Loop {
-        return this.event_loop.virtual_machine.event_loop_handle.?;
+    pub inline fn uvLoop(this: *const WriteFileWindows) *uv.Loop {
+        return this.event_loop.uvLoop();
     }
 
     pub fn open(this: *WriteFileWindows) void {
         const path = this.file_blob.store.?.data.file.pathlike.path.slice();
         this.io_request.data = this;
         const rc = uv.uv_fs_open(
-            this.loop(),
+            this.uvLoop(),
             &this.io_request,
             &(std.os.toPosixPath(path) catch {
                 this.throw(bun.sys.Error{
@@ -486,7 +486,7 @@ pub const WriteFileWindows = struct {
         this.fd = @intCast(rc.int());
 
         // the loop must be copied
-        this.doWriteLoop(this.loop());
+        this.doWriteLoop(this.uvLoop());
     }
 
     fn mkdirp(this: *WriteFileWindows) void {
@@ -536,7 +536,7 @@ pub const WriteFileWindows = struct {
         }
 
         this.total_written += @intCast(rc.int());
-        this.doWriteLoop(this.loop());
+        this.doWriteLoop(this.uvLoop());
     }
 
     pub fn onFinish(container: *WriteFileWindows) void {
