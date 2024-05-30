@@ -16,6 +16,7 @@ steps:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-darwin-aarch64-zig"
@@ -105,6 +106,7 @@ steps:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-darwin-x64-zig"
@@ -194,6 +196,7 @@ steps:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-darwin-x64-baseline-zig"
@@ -283,6 +286,7 @@ steps:
           CPU_TARGET: "native"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-linux-aarch64-zig"
@@ -372,6 +376,7 @@ steps:
           CPU_TARGET: "haswell"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-linux-x64-zig"
@@ -461,6 +466,7 @@ steps:
           CPU_TARGET: "nehalem"
           CCACHE_DIR: "$$HOME/.cache/ccache"
           ZIG_LOCAL_CACHE_DIR: "$$HOME/.cache/zig-cache"
+          BUN_DEPS_CACHE_DIR: "$$HOME/.cache/bun-deps"
         command:
           - "./scripts/all-dependencies.sh"
       - key: "bun-linux-x64-baseline-zig"
