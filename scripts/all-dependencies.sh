@@ -20,15 +20,34 @@ done
 
 BUILT_ANY=0
 
+SUBMODULES=
+CACHE_DIR=
+CACHE=0
+if [ -n "$BUN_DEPS_CACHE_DIR" ]; then
+    CACHE_DIR="$BUN_DEPS_CACHE_DIR"
+    CACHE=1
+    SUBMODULES="$(git submodule status)"
+fi
+
 dep() {
-    local script="$1"
+    local submodule="$1"
+    local script="$2"
     if [ -z "$FORCE" ]; then
         HAS_ALL_DEPS=1
+        CACHE_KEY=
+        if [ "$CACHE" == "1" ]; then
+            CACHE_KEY="$submodule/$(echo "$SUBMODULES" | grep "$submodule" | git hash-object --stdin)"
+        fi
         shift
-        for lib in "$@"; do
+        for lib in "${@:2}"; do
             if [ ! -f "$BUN_DEPS_OUT_DIR/$lib" ]; then
-                HAS_ALL_DEPS=0
-                break
+                if [[ "$CACHE" == "1" && -f "$CACHE_DIR/$CACHE_KEY/$lib" ]]; then
+                    cp "$CACHE_DIR/$CACHE_KEY/$lib" "$BUN_DEPS_OUT_DIR"
+                    printf "%s %s - already cached\n" "$script" "$lib"
+                else
+                    HAS_ALL_DEPS=0
+                    break
+                fi
             fi
         done
         if [ "$HAS_ALL_DEPS" == "1" ]; then
@@ -47,22 +66,30 @@ dep() {
         exit "$EXIT"
     fi
 
+    if [ "$CACHE" == "1" ]; then
+        mkdir -p "$CACHE_DIR/$CACHE_KEY"
+        for lib in "${@:2}"; do
+            cp "$BUN_DEPS_OUT_DIR/$lib" "$CACHE_DIR/$CACHE_KEY/$lib"
+            printf "%s %s - cached\n" "$script" "$lib"
+        done
+    fi
+
     set -e
 
     BUILT_ANY=1
 }
 
-dep base64 libbase64.a
-dep boringssl libcrypto.a libssl.a libdecrepit.a
-dep cares libcares.a
-dep libarchive libarchive.a
-dep lolhtml liblolhtml.a
-dep mimalloc-debug libmimalloc-debug.a libmimalloc-debug.o
-dep mimalloc libmimalloc.a libmimalloc.o
-dep tinycc libtcc.a
-dep zlib libz.a
-dep zstd libzstd.a
-dep lshpack liblshpack.a
+dep base64 base64 libbase64.a
+dep boringssl boringssl libcrypto.a libssl.a libdecrepit.a
+dep c-ares cares libcares.a
+dep libarchive libarchive libarchive.a
+dep lol-html lolhtml liblolhtml.a
+dep mimalloc mimalloc-debug libmimalloc-debug.a libmimalloc-debug.o
+dep mimalloc mimalloc libmimalloc.a libmimalloc.o
+dep tinycc tinycc libtcc.a
+dep zlib zlib libz.a
+dep zstdzstd libzstd.a
+dep ls-hpack lshpack liblshpack.a
 
 if [ "$BUILT_ANY" -eq 0 ]; then
     printf "(run with -f to rebuild)\n"
