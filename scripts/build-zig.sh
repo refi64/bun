@@ -52,24 +52,24 @@ elif [[ "$TARGET_OS" == "windows" ]]; then
   TRIPLET="$TARGET_ARCH-windows-msvc"
 fi
 
-echo "--- Building identifier-cache ---"
+echo "--- Building identifier-cache"
 $zig run src/js_lexer/identifier_data.zig
 
-echo "--- Building node-fallbacks ---"
+echo "--- Building node-fallbacks"
 cd src/node-fallbacks
 bun install --frozen-lockfile
 bun run build
 cd "$cwd"
 
-echo "--- Building codegen ---"
+echo "--- Building codegen"
 bun install --frozen-lockfile
 make runtime_js fallback_decoder bun_error
 
-echo "--- Building modules ---"
+echo "--- Building modules"
 mkdir -p build
 bun run src/codegen/bundle-modules.ts --debug=OFF build
 
-echo "--- Building zig ---"
+echo "--- Building zig"
 cmake -B build -S . \
   -GNinja \
   -DCMAKE_BUILD_TYPE=Release \
@@ -87,5 +87,6 @@ cmake -B build -S . \
   -DBUN_ZIG_OBJ="$cwd/build/bun-zig.o" \
   -DCANARY="$CANARY" \
   -DZIG_LIB_DIR=src/deps/zig/lib \
-  -DZIG_COMPILER="$zig"
+  -DZIG_COMPILER="$zig" \
+  -DZIG_COMPILER_="$zig"
 ONLY_ZIG=1 ninja -C build "$cwd/build/bun-zig.o" -v
