@@ -5,7 +5,7 @@ source $(dirname -- "${BASH_SOURCE[0]}")/env.sh
 cwd=$(pwd)
 zig=
 
-CI=
+CI="${CI:-}"
 if [ -n "$CI" ]; then
   source $(dirname -- "${BASH_SOURCE[0]}")/download-zig.sh
 fi
