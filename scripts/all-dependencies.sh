@@ -88,7 +88,7 @@ dep mimalloc mimalloc-debug libmimalloc-debug.a libmimalloc-debug.o
 dep mimalloc mimalloc libmimalloc.a libmimalloc.o
 dep tinycc tinycc libtcc.a
 dep zlib zlib libz.a
-dep zstdzstd libzstd.a
+dep zstd zstd libzstd.a
 dep ls-hpack lshpack liblshpack.a
 
 if [ "$BUILT_ANY" -eq 0 ]; then
