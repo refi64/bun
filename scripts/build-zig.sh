@@ -84,9 +84,9 @@ cmake -B build -S . \
   -DWEBKIT_DIR="omit" \
   -DNO_CONFIGURE_DEPENDS=1 \
   -DNO_CODEGEN=1 \
-  -DBUN_ZIG_OBJ="$cwd/build/bun-zig.o" \
+  -DBUN_ZIG_OBJ="$cwd/bun-zig.o" \
   -DCANARY="$CANARY" \
   -DZIG_LIB_DIR=src/deps/zig/lib \
   -DZIG_COMPILER="$zig" \
   -DZIG_COMPILER_="$zig"
-ONLY_ZIG=1 ninja -C build "$cwd/build/bun-zig.o" -v
+ONLY_ZIG=1 ninja -C build "$cwd/bun-zig.o" -v
