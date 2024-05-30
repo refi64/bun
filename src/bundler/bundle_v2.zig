@@ -1552,8 +1552,6 @@ pub const BundleV2 = struct {
     pub fn generateInNewThreadWrap(instance: *BundleThread) void {
         Output.Source.configureNamedThread("Bundler");
 
-        std.debug.print("new bundler thread: {}\n", .{std.Thread.getCurrentId()});
-
         const waker = bun.Async.Waker.init() catch @panic("Failed to create waker");
         instance.waker = waker;
         waker.loop.inc();
