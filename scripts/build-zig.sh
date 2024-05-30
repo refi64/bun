@@ -2,6 +2,21 @@
 set -euxo pipefail
 source $(dirname -- "${BASH_SOURCE[0]}")/env.sh
 
+cwd=$(pwd)
+zig=
+
+CI=
+if [ -n "$CI" ]; then
+  source $(dirname -- "${BASH_SOURCE[0]}")/download-zig.sh
+fi
+
+if [ -f "$cwd/.cache/zig/zig" ]; then
+  zig="$cwd/.cache/zig/zig"
+else
+  zig=$(which zig)
+fi
+
+ZIG_OPTIMIZE="${ZIG_OPTIMIZE:-ReleaseFast}"
 CANARY="${CANARY:-0}"
 GIT_SHA="${GIT_SHA:-$(git rev-parse HEAD)}"
 
@@ -37,21 +52,40 @@ elif [[ "$TARGET_OS" == "windows" ]]; then
   TRIPLET="$TARGET_ARCH-windows-msvc"
 fi
 
-OUT_DIR="$(mktemp -d)"
+echo "--- Building identifier-cache ---"
+$zig run src/js_lexer/identifier_data.zig
 
-docker buildx build . \
-  --platform="linux/$DOCKER_MACHINE_ARCH" \
-  --build-arg="BUILD_MACHINE_ARCH=$BUILD_MACHINE_ARCH" \
-  --target="build_release_obj" \
-  --build-arg="GIT_SHA=$GIT_SHA" \
-  --build-arg="TRIPLET=$TRIPLET" \
-  --build-arg="ARCH=$TARGET_ARCH" \
-  --build-arg="BUILDARCH=$BUILDARCH" \
-  --build-arg="CPU_TARGET=$TARGET_CPU" \
-  --build-arg="CANARY=$CANARY" \
-  --build-arg="ASSERTIONS=OFF" \
-  --build-arg="ZIG_OPTIMIZE=ReleaseFast" \
-  --output="type=local,dest=$OUT_DIR" \
-  --progress="plain"
+echo "--- Building node-fallbacks ---"
+cd src/node-fallbacks
+bun install --frozen-lockfile
+bun run build
+cd "$cwd"
 
-cp $OUT_DIR/bun-zig.o bun-zig.o
+echo "--- Building codegen ---"
+bun install --frozen-lockfile
+make runtime_js fallback_decoder bun_error
+
+echo "--- Building modules ---"
+mkdir -p build
+bun run src/codegen/bundle-modules.ts --debug=OFF build
+
+echo "--- Building zig ---"
+cmake -B build -S . \
+  -GNinja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DUSE_LTO=ON \
+  -DZIG_OPTIMIZE="${ZIG_OPTIMIZE}" \
+  -DGIT_SHA="${GIT_SHA}" \
+  -DARCH="${TARGET_ARCH}" \
+  -DBUILDARCH="${BUILDARCH}" \
+  -DCPU_TARGET="${TARGET_CPU}" \
+  -DZIG_TARGET="${TRIPLET}" \
+  -DASSERTIONS="OFF" \
+  -DWEBKIT_DIR="omit" \
+  -DNO_CONFIGURE_DEPENDS=1 \
+  -DNO_CODEGEN=1 \
+  -DBUN_ZIG_OBJ="$cwd/build/bun-zig.o" \
+  -DCANARY="$CANARY" \
+  -DZIG_LIB_DIR=src/deps/zig/lib \
+  -DZIG_COMPILER="$zig"
+ONLY_ZIG=1 ninja -C build "$cwd/build/bun-zig.o" -v
