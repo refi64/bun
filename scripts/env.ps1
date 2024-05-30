@@ -79,6 +79,10 @@ if ($Baseline) {
 
 if (Get-Command sccache -ErrorAction SilentlyContinue) {
   Write-Host "Using sccache"
+
+  # Continue with local compiler if sccache has an error
+  $env:SCCACHE_IGNORE_SERVER_IO_ERROR = "1"
+
   $CMAKE_FLAGS += "-DCMAKE_C_COMPILER_LAUNCHER=sccache"
   $CMAKE_FLAGS += "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache"
   $CMAKE_FLAGS += "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"

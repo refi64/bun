@@ -86,7 +86,8 @@ steps:
           zip -r bun-darwin-aarch64.zip bun-darwin-aarch64
       - wait: ~
       - key: "bun-darwin-aarch64-test"
-        label: ":darwin: aarch64 - bun-test"
+        label: ":darwin: aarch64 - bun-test-%n"
+        parallelism: 5
         agents:
           os: "darwin"
           arch: "aarch64"
@@ -180,7 +181,8 @@ steps:
           zip -r bun-darwin-x64.zip bun-darwin-x64
       - wait: ~
       - key: "bun-darwin-x64-test"
-        label: ":darwin: x64 - bun-test"
+        label: ":darwin: x64 - bun-test-%n"
+        parallelism: 5
         agents:
           os: "darwin"
           arch: "x64"
@@ -274,7 +276,8 @@ steps:
           zip -r bun-darwin-x64-baseline.zip bun-darwin-x64-baseline
       - wait: ~
       - key: "bun-darwin-x64-baseline-test"
-        label: ":darwin: baseline - bun-test"
+        label: ":darwin: baseline - bun-test-%n"
+        parallelism: 5
         agents:
           os: "darwin"
           arch: "x64"
@@ -305,8 +308,8 @@ steps:
       - key: "bun-linux-aarch64-zig"
         label: ":linux: aarch64 - bun-zig"
         agents:
-          os: "darwin"
-          arch: "aarch64"
+          os: "linux"
+          arch: "x64"
         artifact_paths:
           - "bun-zig.o"
         env:
@@ -368,7 +371,8 @@ steps:
           zip -r bun-linux-aarch64.zip bun-linux-aarch64
       - wait: ~
       - key: "bun-linux-aarch64-test"
-        label: ":linux: aarch64 - bun-test"
+        label: ":linux: aarch64 - bun-test-%n"
+        parallelism: 5
         agents:
           os: "linux"
           arch: "aarch64"
@@ -399,8 +403,8 @@ steps:
       - key: "bun-linux-x64-zig"
         label: ":linux: x64 - bun-zig"
         agents:
-          os: "darwin"
-          arch: "aarch64"
+          os: "linux"
+          arch: "x64"
         artifact_paths:
           - "bun-zig.o"
         env:
@@ -462,7 +466,8 @@ steps:
           zip -r bun-linux-x64.zip bun-linux-x64
       - wait: ~
       - key: "bun-linux-x64-test"
-        label: ":linux: x64 - bun-test"
+        label: ":linux: x64 - bun-test-%n"
+        parallelism: 5
         agents:
           os: "linux"
           arch: "x64"
@@ -493,8 +498,8 @@ steps:
       - key: "bun-linux-x64-baseline-zig"
         label: ":linux: baseline - bun-zig"
         agents:
-          os: "darwin"
-          arch: "aarch64"
+          os: "linux"
+          arch: "x64"
         artifact_paths:
           - "bun-zig.o"
         env:
@@ -556,7 +561,8 @@ steps:
           zip -r bun-linux-x64-baseline.zip bun-linux-x64-baseline
       - wait: ~
       - key: "bun-linux-x64-baseline-test"
-        label: ":linux: baseline - bun-test"
+        label: ":linux: baseline - bun-test-%n"
+        parallelism: 5
         agents:
           os: "linux"
           arch: "x64"
@@ -645,7 +651,8 @@ steps:
           - "powershell -command \".\\scripts\\link-buildkite.ps1 -IsBaseline $$False\""
       - wait: ~
       - key: "bun-windows-x64-test"
-        label: ":windows: x64 - bun-test"
+        label: ":windows: x64 - bun-test-%n"
+        parallelism: 5
         agents:
           os: "windows"
           arch: "x64"
@@ -734,7 +741,8 @@ steps:
           - "powershell -command \".\\scripts\\link-buildkite.ps1 -IsBaseline $$True\""
       - wait: ~
       - key: "bun-windows-x64-baseline-test"
-        label: ":windows: baseline - bun-test"
+        label: ":windows: baseline - bun-test-%n"
+        parallelism: 5
         agents:
           os: "windows"
           arch: "x64"
