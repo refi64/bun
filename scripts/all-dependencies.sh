@@ -36,7 +36,7 @@ dep() {
         HAS_ALL_DEPS=1
         CACHE_KEY=
         if [ "$CACHE" == "1" ]; then
-            CACHE_KEY="$submodule/$(echo "$SUBMODULES" | grep "$submodule" | git hash-object --stdin)"
+            CACHE_KEY="$submodule-$CPU_TARGET/$(echo "$SUBMODULES" | grep "$submodule" | git hash-object --stdin)"
         fi
         shift
         for lib in "${@:2}"; do
