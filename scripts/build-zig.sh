@@ -32,7 +32,7 @@ fi
 
 TARGET_OS="${1:-linux}"
 TARGET_ARCH="${2:-x64}"
-TARGET_CPU="${3:-native}"
+TARGET_CPU="${3:-${CPU_TARGET:-native}}"
 
 BUILDARCH=""
 if [[ "$TARGET_ARCH" == "x64" || "$TARGET_ARCH" == "x86_64" || "$TARGET_ARCH" == "amd64" ]]; then
