@@ -2777,9 +2777,10 @@ pub const WindowsLoop = extern struct {
     pre: *uv.uv_prepare_t,
     check: *uv.uv_check_t,
 
+    timer: uv.Timer = undefined,
+
     is_default: c_int,
     active_handles: u32,
-    timer: uv.Timer = undefined,
 
     const log = bun.Output.scoped(.Loop, false);
 

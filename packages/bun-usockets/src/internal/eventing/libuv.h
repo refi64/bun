@@ -28,10 +28,12 @@ struct us_loop_t {
   alignas(LIBUS_EXT_ALIGNMENT) struct us_internal_loop_data_t data;
 
   uv_loop_t *uv_loop;
-  int is_default;
-
   uv_prepare_t *uv_pre;
   uv_check_t *uv_check;
+
+  uv_timer_t timer;
+  int is_default;
+  uint32_t active_handles;
 };
 
 // it is no longer valid to cast a pointer to us_poll_t to a pointer of
